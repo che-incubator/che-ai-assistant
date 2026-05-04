@@ -21,72 +21,71 @@ import (
 )
 
 const (
-	defaultPollInterval      = "5m"
-	defaultGenerationTimeout = "30m"
-	defaultMaxConcurrent     = 1
+	defaultPollInterval  = "5m"
+	defaultTaskTimeout   = "30m"
+	defaultMaxConcurrent = 1
 )
 
 var (
-	defaultLogFile            = path.Join(os.TempDir(), "che-doc-generator.log")
-	defaultPromptTemplateFile = "prompt.tmpl"
+	defaultLogFile      = path.Join(os.TempDir(), "che-ai-assistant.log")
+	defaultTemplatesDir = "templates"
 )
 
 type Config struct {
-	WatchRepos         []string
-	AllowedUsers       []string
-	PollInterval       time.Duration
-	GenerationTimeout  time.Duration
-	MaxConcurrent      int
-	PromptTemplatePath string
-	LogFile            string
+	WatchRepos    []string
+	AllowedUsers  []string
+	PollInterval  time.Duration
+	TaskTimeout   time.Duration
+	MaxConcurrent int
+	TemplatesDir  string
+	LogFile       string
 }
 
-// Parse reads all CHE_DOC_GENERATOR_* environment variables and returns a validated Config.
 func Parse() (*Config, error) {
-	reposStr, err := requireEnv("CHE_DOC_GENERATOR_WATCH_REPOS")
+	reposStr, err := requireEnv("CHE_AI_ASSISTANT_WATCH_REPOS")
 	if err != nil {
 		return nil, err
 	}
 
-	allowedUsersStr, err := requireEnv("CHE_DOC_GENERATOR_ALLOWED_USERS")
+	allowedUsersStr, err := requireEnv("CHE_AI_ASSISTANT_ALLOWED_USERS")
 	if err != nil {
 		return nil, err
 	}
 
-	promptFile := optionalEnv("CHE_DOC_GENERATOR_PROMPT_TEMPLATE", defaultPromptTemplateFile)
+	templatesDir := optionalEnv("CHE_AI_ASSISTANT_TEMPLATES_DIR", defaultTemplatesDir)
 
-	logFile := optionalEnv("CHE_DOC_GENERATOR_LOG_FILE", defaultLogFile)
+	logFile := optionalEnv("CHE_AI_ASSISTANT_LOG_FILE", defaultLogFile)
 
-	pollInterval, err := parseDuration(optionalEnv("CHE_DOC_GENERATOR_POLL_INTERVAL", defaultPollInterval))
+	pollInterval, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_POLL_INTERVAL", defaultPollInterval))
 	if err != nil {
 		return nil, err
 	}
 
-	genTimeout, err := parseDuration(optionalEnv("CHE_DOC_GENERATOR_GENERATION_TIMEOUT", defaultGenerationTimeout))
+	taskTimeout, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_TASK_TIMEOUT", defaultTaskTimeout))
 	if err != nil {
 		return nil, err
 	}
 
 	maxConcurrent := defaultMaxConcurrent
-	if v := os.Getenv("CHE_DOC_GENERATOR_MAX_CONCURRENT"); v != "" {
+	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			return nil, fmt.Errorf("invalid CHE_DOC_GENERATOR_MAX_CONCURRENT: %w", err)
+			return nil, fmt.Errorf("invalid CHE_AI_ASSISTANT_MAX_CONCURRENT: %w", err)
 		}
 		if n <= 0 {
-			return nil, fmt.Errorf("CHE_DOC_GENERATOR_MAX_CONCURRENT must be positive, got %d", n)
+			return nil, fmt.Errorf("CHE_AI_ASSISTANT_MAX_CONCURRENT must be positive, got %d", n)
 		}
 		maxConcurrent = n
 	}
 
 	return &Config{
-		WatchRepos:         splitCSV(reposStr),
-		PollInterval:       pollInterval,
-		GenerationTimeout:  genTimeout,
-		MaxConcurrent:      maxConcurrent,
-		PromptTemplatePath: promptFile,
-		AllowedUsers:       splitCSV(allowedUsersStr),
-		LogFile:            logFile,
+		WatchRepos:    splitCSV(reposStr),
+		PollInterval:  pollInterval,
+		TaskTimeout:   taskTimeout,
+		MaxConcurrent: maxConcurrent,
+		TemplatesDir:  templatesDir,
+		AllowedUsers:  splitCSV(allowedUsersStr),
+		LogFile:       logFile,
 	}, nil
 }
 

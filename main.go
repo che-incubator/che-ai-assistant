@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/generator"
 	"github.com/tolusha/che-doc-generator/pkg/github"
+	"github.com/tolusha/che-doc-generator/pkg/processor"
 )
 
 var (
@@ -46,9 +46,9 @@ func main() {
 		log.Fatalf("[ERROR] github.New: %v", err)
 	}
 
-	docGenerator, err := generator.New(ghClient, cfg)
+	handler, err := processor.New(ghClient, cfg)
 	if err != nil {
-		log.Fatalf("[ERROR] generator.New: %v", err)
+		log.Fatalf("[ERROR] processor.New: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -59,12 +59,12 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	poll := pollFunc(ctx, &wg, cfg, ghClient, docGenerator)
+	poll := pollFunc(ctx, &wg, cfg, ghClient, handler)
 
 	ticker := time.NewTicker(cfg.PollInterval)
 	defer ticker.Stop()
 
-	log.Printf("[INFO] starting che-doc-generator: watching %v, poll every %v", cfg.WatchRepos, cfg.PollInterval)
+	log.Printf("[INFO] starting che-ai-assistant: watching %v, poll every %v", cfg.WatchRepos, cfg.PollInterval)
 
 	poll()
 
@@ -96,7 +96,7 @@ func pollFunc(
 	wg *sync.WaitGroup,
 	cfg *config.Config,
 	ghClient *github.Client,
-	docGenerator *generator.Generator,
+	handler *processor.Handler,
 ) func() {
 	sem := make(chan struct{}, cfg.MaxConcurrent)
 
@@ -156,7 +156,7 @@ func pollFunc(
 					case <-ctx.Done():
 						return
 					}
-					docGenerator.Trigger(ctx, trigger)
+					handler.Trigger(ctx, trigger)
 				}(trigger)
 			}
 		}

@@ -54,7 +54,7 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/generate-che-doc"),
+			Body: gh.Ptr("/che-ai-assistant generate-che-doc"),
 			User: &gh.User{Login: gh.Ptr("alice")},
 		},
 		{
@@ -77,11 +77,11 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 	if trigger.PRNumber != 1 {
 		t.Errorf("expected PR number 1, got %d", trigger.PRNumber)
 	}
-	if trigger.CommentBody != "/generate-che-doc" {
+	if trigger.CommentBody != "/che-ai-assistant generate-che-doc" {
 		t.Errorf("expected comment body preserved, got %q", trigger.CommentBody)
 	}
-	if trigger.SubCommand != commands.SubCommandDefault {
-		t.Errorf("expected generate command for bare trigger, got %q", trigger.SubCommand)
+	if trigger.SubCommand != commands.SubCommandGenerateCheDoc {
+		t.Errorf("expected generate-che-doc command, got %q", trigger.SubCommand)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestFindTriggerComment_ParsesSubcommand(t *testing.T) {
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/generate-che-doc help"),
+			Body: gh.Ptr("/che-ai-assistant help"),
 			User: &gh.User{Login: gh.Ptr("alice")},
 		},
 	}
@@ -137,7 +137,7 @@ func TestFindTriggerComment_SkipsProcessed(t *testing.T) {
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/generate-che-doc"),
+			Body: gh.Ptr("/che-ai-assistant generate-che-doc"),
 			User: &gh.User{Login: gh.Ptr("alice")},
 		},
 	}
@@ -161,7 +161,7 @@ func TestFindTriggerComment_SkipsUnauthorizedUser(t *testing.T) {
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/generate-che-doc"),
+			Body: gh.Ptr("/che-ai-assistant generate-che-doc"),
 			User: &gh.User{Login: gh.Ptr("mallory")},
 		},
 	}

@@ -47,9 +47,9 @@ const (
 )
 
 func New(cfg *config.Config) (*Client, error) {
-	token := os.Getenv("CHE_DOC_GENERATOR_GITHUB_TOKEN")
+	token := os.Getenv("CHE_AI_ASSISTANT_GITHUB_TOKEN")
 	if token == "" {
-		return nil, fmt.Errorf("CHE_DOC_GENERATOR_GITHUB_TOKEN environment variable is required")
+		return nil, fmt.Errorf("CHE_AI_ASSISTANT_GITHUB_TOKEN environment variable is required")
 	}
 
 	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})

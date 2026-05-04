@@ -24,14 +24,18 @@ func TestParse(t *testing.T) {
 		isOk                   bool
 		expectedSubCommandType SubCommandType
 	}{
-		{"/generate-che-doc", true, SubCommandDefault},
-		{"/generate-che-doc\nsome text", true, SubCommandDefault},
-		{"/generate-che-doc help", true, SubCommandHelp},
-		{"please /generate-che-doc help thanks", true, SubCommandHelp},
-		{"/generate-che-doc   help    ", true, SubCommandHelp},
-		{"\n   /generate-che-doc", true, SubCommandDefault},
+		{"/che-ai-assistant generate-che-doc", true, SubCommandGenerateCheDoc},
+		{"/che-ai-assistant generate-che-doc\nsome text", true, SubCommandGenerateCheDoc},
+		{"/che-ai-assistant help", true, SubCommandHelp},
+		{"please /che-ai-assistant help thanks", true, SubCommandHelp},
+		{"/che-ai-assistant   generate-che-doc    ", true, SubCommandGenerateCheDoc},
+		{"\n   /che-ai-assistant generate-che-doc", true, SubCommandGenerateCheDoc},
+		{"/che-ai-assistant", true, SubCommandHelp},
+		{"/che-ai-assistant\n", true, SubCommandHelp},
+		{"/che-ai-assistant  \n", true, SubCommandHelp},
 		{"just a regular comment", false, ""},
-		{"/generate-che-documentary", false, ""},
+		{"/che-ai-assistantly", false, ""},
+		{"/generate-che-doc", false, ""},
 	}
 
 	for i, test := range testCases {

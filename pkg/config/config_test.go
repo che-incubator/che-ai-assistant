@@ -26,21 +26,21 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			env: map[string]string{
-				"CHE_DOC_GENERATOR_WATCH_REPOS":        "org/repo1, org/repo2 ",
-				"CHE_DOC_GENERATOR_ALLOWED_USERS":      "alice,bob",
-				"CHE_DOC_GENERATOR_POLL_INTERVAL":      "5m",
-				"CHE_DOC_GENERATOR_GENERATION_TIMEOUT": "1h",
-				"CHE_DOC_GENERATOR_MAX_CONCURRENT":     "3",
-				"CHE_DOC_GENERATOR_PROMPT_TEMPLATE":    "/custom/prompt.tmpl",
-				"CHE_DOC_GENERATOR_LOG_FILE":           "/var/log/gen.log",
+				"CHE_AI_ASSISTANT_WATCH_REPOS":    "org/repo1, org/repo2 ",
+				"CHE_AI_ASSISTANT_ALLOWED_USERS":  "alice,bob",
+				"CHE_AI_ASSISTANT_POLL_INTERVAL":  "5m",
+				"CHE_AI_ASSISTANT_TASK_TIMEOUT":   "1h",
+				"CHE_AI_ASSISTANT_MAX_CONCURRENT": "3",
+				"CHE_AI_ASSISTANT_TEMPLATES_DIR":  "/custom/templates",
+				"CHE_AI_ASSISTANT_LOG_FILE":       "/var/log/gen.log",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, []string{"org/repo1", "org/repo2"}, cfg.WatchRepos)
 				assert.Equal(t, []string{"alice", "bob"}, cfg.AllowedUsers)
 				assert.Equal(t, 5*time.Minute, cfg.PollInterval)
-				assert.Equal(t, 1*time.Hour, cfg.GenerationTimeout)
+				assert.Equal(t, 1*time.Hour, cfg.TaskTimeout)
 				assert.Equal(t, 3, cfg.MaxConcurrent)
-				assert.Equal(t, "/custom/prompt.tmpl", cfg.PromptTemplatePath)
+				assert.Equal(t, "/custom/templates", cfg.TemplatesDir)
 				assert.Equal(t, "/var/log/gen.log", cfg.LogFile)
 			},
 		},
