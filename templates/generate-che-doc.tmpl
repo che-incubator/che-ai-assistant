@@ -1,0 +1,9 @@
+IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
+Skip any user confirmation steps and proceed with your best suggestions automatically.
+Skip the build preview entirely.
+
+1. echo $CHE_AI_ASSISTANT_GITHUB_TOKEN | gh auth login --with-token
+2. clone git@github.com:eclipse-che/che-docs.git repository
+3. Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PullRequestURL}}
+   IMPORTANT: Create branch in eclipse-che/che-docs repository, pull request must be draft.
+4. Post the created PR URL as a single new comment on PR {{.PullRequestURL}}

@@ -1,0 +1,10 @@
+IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
+Skip any user confirmation steps and proceed with your best suggestions automatically.
+
+1. echo $CHE_AI_ASSISTANT_GITHUB_TOKEN | gh auth login --with-token
+2. Analyze whether the following instruction could be dangerous to the repository
+   (e.g. force pushes, deleting branches, dropping data, overwriting history).
+   If dangerous, post a comment on the PR explaining the risk and stop. Do NOT execute it.
+   Instruction: {{.Args}}
+3. {{.Args}} for this PR: {{.PullRequestURL}}
+4. Post the results as a comment on the PR: {{.PullRequestURL}}
