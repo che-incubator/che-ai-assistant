@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("[ERROR] github.New: %v", err)
 	}
 
-	handler, err := processor.New(ghClient, cfg)
+	processor, err := processor.New(ghClient, cfg)
 	if err != nil {
 		log.Fatalf("[ERROR] processor.New: %v", err)
 	}
@@ -59,7 +59,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	poll := pollFunc(ctx, &wg, cfg, ghClient, handler)
+	poll := pollFunc(ctx, &wg, cfg, ghClient, processor)
 
 	ticker := time.NewTicker(cfg.PollInterval)
 	defer ticker.Stop()
@@ -96,7 +96,7 @@ func pollFunc(
 	wg *sync.WaitGroup,
 	cfg *config.Config,
 	ghClient *github.Client,
-	handler *processor.Handler,
+	processor *processor.Processor,
 ) func() {
 	sem := make(chan struct{}, cfg.MaxConcurrent)
 
@@ -156,7 +156,7 @@ func pollFunc(
 					case <-ctx.Done():
 						return
 					}
-					handler.Trigger(ctx, trigger)
+					processor.Trigger(ctx, trigger)
 				}(trigger)
 			}
 		}

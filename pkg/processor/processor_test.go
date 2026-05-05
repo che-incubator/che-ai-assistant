@@ -117,7 +117,7 @@ func TestNew_IgnoresNonTmplFiles(t *testing.T) {
 }
 
 func TestBuildPrompt(t *testing.T) {
-	h := &Handler{templates: map[commands.SubCommandType]string{
+	h := &Processor{templates: map[commands.SubCommandType]string{
 		commands.SubCommandGenerateCheDoc: "Generate docs for {{.PRURL}} please",
 	}}
 
@@ -128,7 +128,7 @@ func TestBuildPrompt(t *testing.T) {
 }
 
 func TestBuildPrompt_MissingTemplate(t *testing.T) {
-	h := &Handler{templates: map[commands.SubCommandType]string{}}
+	h := &Processor{templates: map[commands.SubCommandType]string{}}
 
 	_, err := h.buildPrompt(commands.SubCommandGenerateCheDoc, "https://github.com/org/repo/pull/42")
 

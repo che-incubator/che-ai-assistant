@@ -66,7 +66,7 @@ func generate(ctx context.Context, trigger *github.Trigger, deps *HandlerDepende
 func parseDocPRURL(output string) (string, error) {
 	match := prURLPattern.FindString(output)
 	if match == "" {
-		return "", fmt.Errorf("no PR URL found in output")
+		return "", fmt.Errorf("no compare URL found in output")
 	}
 
 	return match, nil
@@ -100,7 +100,7 @@ func updateCommentWithDocPR(
 ) {
 	log.Printf("[INFO] %s completed for %s/%s#%d: %s", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber, docPR)
 
-	msg := fmt.Sprintf("%s\n\nDocumentation PR created: %s", trigger.CommentBody, docPR)
+	msg := fmt.Sprintf("%s\n\nCreate documentation PR: %s", trigger.CommentBody, docPR)
 	if err := deps.GHClient.UpdatePullRequestComment(
 		ctx,
 		trigger.Owner,

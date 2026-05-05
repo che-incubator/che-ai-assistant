@@ -27,7 +27,7 @@ import (
 	"github.com/tolusha/che-doc-generator/pkg/processor/handlers"
 )
 
-type Handler struct {
+type Processor struct {
 	ghClient     *github.Client
 	timeout      time.Duration
 	pollInterval time.Duration
@@ -37,13 +37,13 @@ type Handler struct {
 func New(
 	ghClient *github.Client,
 	cfg *config.Config,
-) (*Handler, error) {
+) (*Processor, error) {
 	templates, err := loadTemplates(cfg.TemplatesDir)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Handler{
+	return &Processor{
 		ghClient:     ghClient,
 		timeout:      cfg.TaskTimeout,
 		pollInterval: cfg.PollInterval,
@@ -51,7 +51,7 @@ func New(
 	}, nil
 }
 
-func (h *Handler) Trigger(ctx context.Context, trigger *github.Trigger) {
+func (h *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	deps := &handlers.HandlerDependency{
 		GHClient:     h.ghClient,
 		Timeout:      h.timeout,
@@ -71,7 +71,7 @@ func (h *Handler) Trigger(ctx context.Context, trigger *github.Trigger) {
 	}
 }
 
-func (h *Handler) buildPrompt(subCommand commands.SubCommandType, prUrl string) (string, error) {
+func (h *Processor) buildPrompt(subCommand commands.SubCommandType, prUrl string) (string, error) {
 	tmplContent, ok := h.templates[subCommand]
 	if !ok {
 		return "", fmt.Errorf("no template found for subcommand %q", subCommand)
