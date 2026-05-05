@@ -3,6 +3,7 @@ You are an automated documentation generator. Follow these steps exactly:
 The DevWorkspace name must include the repository name and PR number (e.g., repo-pr-123).
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
 3. In the DevWorkspace:
+    - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
     - clone git@github.com:tolusha/che-docs.git repository
     - Sync with upstream: add remote `upstream` pointing to git@github.com:eclipse-che/che-docs.git, fetch upstream,
       and reset the local main branch to upstream/main. Push the updated main to origin.
