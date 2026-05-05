@@ -26,19 +26,19 @@ func TestParseDocPRURL(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name:     "URL in output",
-			output:   `Some text\nhttps://github.com/eclipse-che/che-docs/pull/123\nDone`,
-			expected: "https://github.com/eclipse-che/che-docs/pull/123",
+			name:     "compare URL in output",
+			output:   "Some text\nhttps://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:branch-123?expand=1\nDone",
+			expected: "https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:branch-123?expand=1",
 		},
 		{
-			name:     "URL embedded in JSON",
-			output:   `{"result": "https://github.com/eclipse-che/che-docs/pull/456"}`,
-			expected: "https://github.com/eclipse-che/che-docs/pull/456",
+			name:     "compare URL embedded in JSON",
+			output:   `{"result": "https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:docs-pr-456?expand=1"}`,
+			expected: "https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:docs-pr-456?expand=1",
 		},
 		{
-			name:     "multiple URLs returns first",
-			output:   "https://github.com/eclipse-che/che-docs/pull/1 and https://github.com/eclipse-che/che-docs/pull/2",
-			expected: "https://github.com/eclipse-che/che-docs/pull/1",
+			name:     "multiple compare URLs returns first",
+			output:   "https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:a?expand=1 and https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:b?expand=1",
+			expected: "https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:a?expand=1",
 		},
 		{
 			name:      "no URL in output",
@@ -47,7 +47,12 @@ func TestParseDocPRURL(t *testing.T) {
 		},
 		{
 			name:      "wrong repo URL",
-			output:    "https://github.com/other-org/other-repo/pull/99",
+			output:    "https://github.com/other-org/other-repo/compare/main...foo:bar:baz?expand=1",
+			expectErr: true,
+		},
+		{
+			name:      "old-style PR URL no longer matches",
+			output:    "https://github.com/eclipse-che/che-docs/pull/123",
 			expectErr: true,
 		},
 		{

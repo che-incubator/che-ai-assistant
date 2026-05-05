@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	prURLPattern = regexp.MustCompile(`https://github\.com/eclipse-che/che-docs/pull/\d+`)
+	prURLPattern = regexp.MustCompile(`https://github\.com/eclipse-che/che-docs/compare/[^\s"]+`)
 )
 
 func HandleGenerateCheDoc(ctx context.Context, trigger *github.Trigger, deps *HandlerDependency) {
