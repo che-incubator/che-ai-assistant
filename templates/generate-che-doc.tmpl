@@ -4,6 +4,8 @@ The DevWorkspace name must include the repository name and PR number (e.g., repo
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
 3. In the DevWorkspace:
     - clone git@github.com:tolusha/che-docs.git repository
+    - Sync with upstream: add remote `upstream` pointing to git@github.com:eclipse-che/che-docs.git, fetch upstream,
+      and reset the local main branch to upstream/main. Push the updated main to origin.
     - Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PRURL}}
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
        Skip any user confirmation steps and proceed with your best suggestions automatically.
