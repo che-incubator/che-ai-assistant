@@ -51,7 +51,7 @@ func (g *OkPRReviewHandler) OnSuccess(
 		}
 	}
 
-	if len(reviews) <= 4 {
+	if len(reviews) < 4 {
 		body := fmt.Sprintf("%s\n\nPullRequest review not found.", trigger.CommentBody)
 
 		if err := ghClient.UpdatePullRequestComment(
