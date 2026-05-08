@@ -49,7 +49,7 @@ func BuildWelcomeMessage(pollInterval time.Duration) string {
 	b.WriteString(WelcomeMarker)
 	b.WriteString("\n")
 	b.WriteString("Hi! I'm **che-ai-assistant** — I help with your pull requests.\n\n")
-	b.WriteString(fmt.Sprintf("I check for new commands every **%s**.\n\n", pollInterval))
+	b.WriteString(fmt.Sprintf("I check for new commands every **%s** (if I am not busy :) ).\n\n", pollInterval))
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {

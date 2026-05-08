@@ -34,6 +34,12 @@ type Processor struct {
 	templates    map[commands.SubCommandType]string
 }
 
+var (
+	commandHandlers = map[commands.SubCommandType]handlers.Handler{
+		commands.SubCommandGenerateCheDoc: handlers.NewGenerateCheDocHandler(),
+	}
+)
+
 func New(
 	ghClient *github.Client,
 	cfg *config.Config,
@@ -51,28 +57,79 @@ func New(
 	}, nil
 }
 
-func (h *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
-	deps := &handlers.HandlerDependency{
-		GHClient:     h.ghClient,
-		Timeout:      h.timeout,
-		PollInterval: h.pollInterval,
-		BuildPrompt:  h.buildPrompt,
-	}
-
+func (p *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	log.Printf("[INFO] running %s for %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
 
 	switch trigger.SubCommand {
 	case commands.SubCommandHelp:
-		handlers.HandleHelp(ctx, trigger, deps)
-	case commands.SubCommandGenerateCheDoc:
-		handlers.HandleGenerateCheDoc(ctx, trigger, deps)
+		p.HandleHelp(ctx, trigger)
 	default:
-		handlers.HandleUnknown(ctx, trigger)
+		handler := commandHandlers[trigger.SubCommand]
+		if handler == nil {
+			p.HandleUnknown(ctx, trigger)
+			return
+		}
+
+		p.run(ctx, trigger, handler)
 	}
 }
 
-func (h *Processor) buildPrompt(subCommand commands.SubCommandType, prUrl string) (string, error) {
-	tmplContent, ok := h.templates[subCommand]
+func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler handlers.Handler) {
+	prompt, err := p.buildPrompt(trigger.SubCommand, trigger.PRURL)
+	if err != nil {
+		log.Printf("[ERROR] failed to build prompt for %s: %s", trigger.SubCommand, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	output, err := handler.Run(ctx, prompt, trigger, p.ghClient)
+
+	if err != nil {
+		log.Printf(
+			"[ERROR] %s failed for %s/%s#%d: %v",
+			trigger.SubCommand,
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+			err,
+		)
+
+		log.Printf("[ERROR] command output:\n%s", string(output))
+
+		handler.OnFailure(ctx, output, trigger, p.ghClient)
+	} else {
+		log.Printf(
+			"[INFO] %s completed for %s/%s#%d",
+			trigger.SubCommand,
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+		)
+
+		handler.OnSuccess(ctx, output, trigger, p.ghClient)
+	}
+}
+
+func (p *Processor) HandleHelp(ctx context.Context, trigger *github.Trigger) {
+	if err := p.ghClient.PostPullRequestComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.PRNumber,
+		commands.BuildWelcomeMessage(p.pollInterval),
+	); err != nil {
+		log.Printf("[ERROR] error posting help comment: %v", err)
+	}
+}
+
+func (p *Processor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
+	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
+}
+
+func (p *Processor) buildPrompt(subCommand commands.SubCommandType, prUrl string) (string, error) {
+	tmplContent, ok := p.templates[subCommand]
 	if !ok {
 		return "", fmt.Errorf("no template found for subcommand %q", subCommand)
 	}

@@ -12,15 +12,22 @@
 package handlers
 
 import (
-	"time"
+	"context"
+	"log"
 
-	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
-type HandlerDependency struct {
-	GHClient     *github.Client
-	Timeout      time.Duration
-	PollInterval time.Duration
-	BuildPrompt  func(commands.SubCommandType, string) (string, error)
+func updatePullRequestComment(ctx context.Context, body string, trigger *github.Trigger, ghClient *github.Client) {
+	err := ghClient.UpdatePullRequestComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.CommentID,
+		body,
+	)
+
+	if err != nil {
+		log.Println("[ERROR] Failed to update pull request comment:", err)
+	}
 }
