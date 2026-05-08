@@ -13,9 +13,11 @@ package processor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -32,6 +34,10 @@ type Processor struct {
 	timeout      time.Duration
 	pollInterval time.Duration
 	templates    map[commands.SubCommandType]string
+}
+
+type ClaudeOutput struct {
+	Result string `json:"result"`
 }
 
 var (
@@ -85,7 +91,12 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	outputs, err := handler.Run(ctx, prompt, trigger, p.ghClient)
+	log.Printf("[INFO] Claude prompt >>>>>>>>")
+	log.Printf("%s", prompt)
+	log.Printf("[INFO] Claude prompt <<<<<<<<")
+
+	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
+	data, err := cmd.CombinedOutput()
 
 	if err != nil {
 		log.Printf(
@@ -97,10 +108,38 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 			err,
 		)
 
-		log.Printf("[ERROR] command output:\n%s", strings.Join(outputs, "\n"))
+		log.Printf("[ERROR] Claude output: >>>>>>>>")
+		log.Printf("%s", string(data))
+		log.Printf("[ERROR] Claude output: <<<<<<<<")
 
-		handler.OnFailure(ctx, trigger, p.ghClient)
+		body := fmt.Sprintf("%s\n\nCommand fialed.", trigger.CommentBody)
+		if err := p.ghClient.UpdatePullRequestComment(
+			ctx,
+			trigger.Owner,
+			trigger.Repo,
+			trigger.CommentID,
+			body,
+		); err != nil {
+			log.Printf(
+				"[ERROR] Failed to post on %s/%s#%d",
+				trigger.Owner,
+				trigger.Repo,
+				trigger.PRNumber,
+			)
+		}
+
+		handler.OnError(
+			ctx,
+			trigger,
+			p.ghClient,
+		)
 	} else {
+		var claudeOutput ClaudeOutput
+		if err := json.Unmarshal(data, &claudeOutput); err != nil {
+			log.Printf("[ERROR] failed to unmarshal claude output: %s", err)
+			return
+		}
+
 		log.Printf(
 			"[INFO] %s completed for %s/%s#%d",
 			trigger.SubCommand,
@@ -109,7 +148,12 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 			trigger.PRNumber,
 		)
 
-		handler.OnSuccess(ctx, outputs, trigger, p.ghClient)
+		handler.OnSuccess(
+			ctx,
+			claudeOutput.Result,
+			trigger,
+			p.ghClient,
+		)
 	}
 }
 

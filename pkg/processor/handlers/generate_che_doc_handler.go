@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os/exec"
 	"regexp"
 
 	"github.com/tolusha/che-doc-generator/pkg/github"
@@ -31,75 +30,34 @@ func NewGenerateCheDocHandler() *GenerateCheDocHandler {
 	return &GenerateCheDocHandler{}
 }
 
-func (g *GenerateCheDocHandler) Run(
-	ctx context.Context,
-	prompt string,
-	trigger *github.Trigger,
-	ghClient *github.Client,
-) ([]string, error) {
-	log.Printf("[INFO] Running claude >>>>>>>>")
-	log.Printf("[INFO] Prompt:\n%s", prompt)
-	log.Printf("[INFO] Running claude <<<<<<<<")
-
-	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
-	rawData, err := cmd.CombinedOutput()
-
-	output := string(rawData)
-
-	if err != nil {
-		return []string{output}, err
-	}
-
-	prUrl, err := parseDocPRURL(output)
-	if err != nil {
-		return []string{output}, fmt.Errorf("error parsing doc PR URL: %s", err)
-	}
-
-	return []string{prUrl}, nil
-}
-
-func (g *GenerateCheDocHandler) OnFailure(
+func (g *GenerateCheDocHandler) OnError(
 	ctx context.Context,
 	trigger *github.Trigger,
 	ghClient *github.Client,
 ) {
-	body := fmt.Sprintf("%s\n\nFailed to generate documentation.", trigger.CommentBody)
-
-	err := ghClient.UpdatePullRequestComment(
-		ctx,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.CommentID,
-		body,
-	)
-
-	if err != nil {
-		log.Printf(
-			"[ERROR] Failed to post on %s/%s#%d",
-			trigger.Owner,
-			trigger.Repo,
-			trigger.PRNumber,
-		)
-	}
 }
 
 func (g *GenerateCheDocHandler) OnSuccess(
 	ctx context.Context,
-	outputs []string,
+	result string,
 	trigger *github.Trigger,
 	ghClient *github.Client,
 ) {
-	body := fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, outputs[0])
+	prUrl, err := parseDocPRURL(result)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse `%s` doc PR URL: %v", result, err)
+		return
+	}
 
-	err := ghClient.UpdatePullRequestComment(
+	body := fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, prUrl)
+
+	if err := ghClient.UpdatePullRequestComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
 		trigger.CommentID,
 		body,
-	)
-
-	if err != nil {
+	); err != nil {
 		log.Printf(
 			"[ERROR] Failed to post on %s/%s#%d",
 			trigger.Owner,

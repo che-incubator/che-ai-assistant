@@ -19,25 +19,15 @@ import (
 
 // Handler defines the lifecycle for processing a bot subcommand triggered by a PR comment.
 type Handler interface {
-	// Run executes the subcommand logic and returns its raw output.
-	Run(
-		ctx context.Context,
-		prompt string,
-		trigger *github.Trigger,
-		ghClient *github.Client,
-	) ([]string, error)
-
-	// OnFailure is called when Run returns an error, allowing the handler to update the PR comment.
-	OnFailure(
+	OnError(
 		ctx context.Context,
 		trigger *github.Trigger,
 		ghClient *github.Client,
 	)
 
-	// OnSuccess is called when Run succeeds, allowing the handler to post results to the PR.
 	OnSuccess(
 		ctx context.Context,
-		outputs []string,
+		result string,
 		trigger *github.Trigger,
 		ghClient *github.Client,
 	)
