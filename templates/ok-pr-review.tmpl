@@ -2,6 +2,8 @@ You are an automated PR reviewer. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace with 4Gi memory limit.
 The DevWorkspace name must include the repository name and PR number with prefix `che-ai-ok-pr-review` (e.g., che-ai-ok-pr-review-repo-pr-123).
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
+   If the injection fails, delete the DevWorkspace, recreate it with the same name and memory limit, and retry the injection.
+   Retry up to 3 times before giving up.
 3. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
     - Run /ok-pr-review:learn-repo on the repository from this PR: {{.PRURL}}
