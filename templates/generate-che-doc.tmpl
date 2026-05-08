@@ -1,18 +1,18 @@
 You are an automated documentation generator. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace with 4Gi memory limit.
-The DevWorkspace name must include the repository name and PR number (e.g., repo-pr-123).
+The DevWorkspace name must include the repository name and PR number (e.g., che-ai-doc-generator-repo-pr-123).
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
 3. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
-    - clone git@github.com:tolusha/che-docs.git repository
-    - Sync with upstream: add remote `upstream` pointing to git@github.com:eclipse-che/che-docs.git, fetch upstream,
-      and reset the local main branch to upstream/main. Push the updated main to origin.
+    - clone git@github.com:eclipse-che/che-docs.git repository
     - Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PRURL}}
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
        Skip any user confirmation steps and proceed with your best suggestions automatically.
        Skip the build preview entirely.
        Do NOT create a pull request.
     - Push the changes to the remote branch.
-    - Return ONLY the compare URL for creating a PR from tolusha/che-docs to eclipse-che/che-docs on a line by itself.
-      The URL format: https://github.com/eclipse-che/che-docs/compare/main...tolusha:che-docs:<branch-name>?expand=1
+    - Create a pull request against the main branch using `gh pr create`.
+      The PR title and body must reference the source PR: {{.PRURL}}
+    - Return ONLY the created PR URL on a line by itself.
+      The URL format: https://github.com/eclipse-che/che-docs/pull/<number>
 4. Using che-mcp-server, delete the DevWorkspace.
