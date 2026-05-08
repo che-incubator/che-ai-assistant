@@ -15,6 +15,7 @@ A GitHub bot that monitors pull requests and executes AI-powered tasks triggered
 | Command | Description |
 |---------|-------------|
 | `/che-ai-assistant generate-che-doc` | Generate a documentation PR based on the PR's changes |
+| `/che-ai-assistant ok-pr-review` | Run a comprehensive PR review (summary, code review, deep review, impact analysis) |
 | `/che-ai-assistant help` | Show available commands |
 
 ## Prerequisites
