@@ -98,6 +98,32 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
 	data, err := cmd.CombinedOutput()
 
+	claudeOutputFile := filepath.Join(
+		os.TempDir(),
+		fmt.Sprintf(
+			"claude-output-%s-%s-%d-%d.json",
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+			time.Now().Unix(),
+		),
+	)
+	if writeErr := os.WriteFile(claudeOutputFile, data, 0644); writeErr != nil {
+		log.Printf(
+			"[ERROR] failed to write claude output to %s: %v",
+			claudeOutputFile,
+			writeErr,
+		)
+	} else {
+		log.Printf(
+			"[INFO] Claude output written to %s for %s/%s#%d",
+			claudeOutputFile,
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+		)
+	}
+
 	if err != nil {
 		log.Printf(
 			"[ERROR] %s failed for %s/%s#%d: %v",
@@ -107,10 +133,6 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 			trigger.PRNumber,
 			err,
 		)
-
-		log.Printf("[ERROR] Claude output: >>>>>>>>")
-		log.Printf("%s", string(data))
-		log.Printf("[ERROR] Claude output: <<<<<<<<")
 
 		body := fmt.Sprintf("%s\n\nCommand fialed.", trigger.CommentBody)
 		if err := p.ghClient.UpdatePullRequestComment(

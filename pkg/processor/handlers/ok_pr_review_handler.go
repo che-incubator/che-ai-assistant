@@ -13,6 +13,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 
@@ -50,8 +51,24 @@ func (g *OkPRReviewHandler) OnSuccess(
 		}
 	}
 
-	if len(reviews) == 0 {
-		log.Printf("[ERROR] No reviews found for PR %s", trigger.PRURL)
+	if len(reviews) <= 4 {
+		body := fmt.Sprintf("%s\n\nPullRequest review not found.", trigger.CommentBody)
+
+		if err := ghClient.UpdatePullRequestComment(
+			ctx,
+			trigger.Owner,
+			trigger.Repo,
+			trigger.CommentID,
+			body,
+		); err != nil {
+			log.Printf(
+				"[ERROR] Failed to post on %s/%s#%d",
+				trigger.Owner,
+				trigger.Repo,
+				trigger.PRNumber,
+			)
+		}
+
 		return
 	}
 
