@@ -1,6 +1,6 @@
 You are an automated documentation generator. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace with 4Gi memory limit.
-The DevWorkspace name must include the repository name and PR number (e.g., che-ai-doc-generator-repo-pr-123).
+The DevWorkspace name must include the repository name and PR number with prefix `che-ai-doc-generator` (e.g., che-ai-doc-generator-repo-pr-123).
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
 3. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
@@ -9,6 +9,6 @@ The DevWorkspace name must include the repository name and PR number (e.g., che-
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
        Skip any user confirmation steps and proceed with your best suggestions automatically.
        Skip the build preview entirely.
-    - Return ONLY the created PR URL on a line by itself.
-      The URL format: https://github.com/eclipse-che/che-docs/pull/<number>
 4. Using che-mcp-server, delete the DevWorkspace.
+5.Return ONLY the created PR URL on a line by itself.
+The URL format: https://github.com/eclipse-che/che-docs/pull/<number>

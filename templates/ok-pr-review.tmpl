@@ -1,6 +1,6 @@
 You are an automated PR reviewer. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace with 4Gi memory limit.
-The DevWorkspace name must include the repository name and PR number (e.g., che-ai-ok-pr-review-repo-pr-123).
+The DevWorkspace name must include the repository name and PR number with prefix `che-ai-ok-pr-review` (e.g., che-ai-ok-pr-review-repo-pr-123).
 2. Using che-mcp-server, inject Claude code in the DevWorkspace.
 3. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
@@ -15,5 +15,5 @@ The DevWorkspace name must include the repository name and PR number (e.g., che-
         4. /ok-pr-review:impact
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
        Skip any user confirmation steps and proceed with your best suggestions automatically.
-    - Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
 4. Using che-mcp-server, delete the DevWorkspace.
+5. Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
