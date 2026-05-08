@@ -9,10 +9,6 @@ The DevWorkspace name must include the repository name and PR number (e.g., che-
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
        Skip any user confirmation steps and proceed with your best suggestions automatically.
        Skip the build preview entirely.
-       Do NOT create a pull request.
-    - Push the changes to the remote branch.
-    - Create a pull request against the main branch using `gh pr create`.
-      The PR title and body must reference the source PR: {{.PRURL}}
     - Return ONLY the created PR URL on a line by itself.
       The URL format: https://github.com/eclipse-che/che-docs/pull/<number>
 4. Using che-mcp-server, delete the DevWorkspace.
