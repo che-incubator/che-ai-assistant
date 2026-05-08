@@ -43,13 +43,14 @@ func (g *GenerateCheDocHandler) OnSuccess(
 	trigger *github.Trigger,
 	ghClient *github.Client,
 ) {
+	var body string
+
 	prUrl, err := parseDocPRURL(result)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse `%s` doc PR URL: %v", result, err)
-		return
+		body = fmt.Sprintf("%s\n\nDocumentation PR not found.", trigger.CommentBody)
+	} else {
+		body = fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, prUrl)
 	}
-
-	body := fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, prUrl)
 
 	if err := ghClient.UpdatePullRequestComment(
 		ctx,
