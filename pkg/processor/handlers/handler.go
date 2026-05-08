@@ -25,12 +25,11 @@ type Handler interface {
 		prompt string,
 		trigger *github.Trigger,
 		ghClient *github.Client,
-	) (string, error)
+	) ([]string, error)
 
 	// OnFailure is called when Run returns an error, allowing the handler to update the PR comment.
 	OnFailure(
 		ctx context.Context,
-		output string,
 		trigger *github.Trigger,
 		ghClient *github.Client,
 	)
@@ -38,7 +37,7 @@ type Handler interface {
 	// OnSuccess is called when Run succeeds, allowing the handler to post results to the PR.
 	OnSuccess(
 		ctx context.Context,
-		output string,
+		outputs []string,
 		trigger *github.Trigger,
 		ghClient *github.Client,
 	)

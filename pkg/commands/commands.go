@@ -25,8 +25,9 @@ const (
 
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
 
-	SubCommandGenerateCheDoc SubCommandType = "generate-che-doc"
-	SubCommandHelp           SubCommandType = "help"
+	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
+	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
+	SubCommandHelp              SubCommandType = "help"
 )
 
 type SubCommand struct {
@@ -39,6 +40,7 @@ var (
 
 	SubCommands = []SubCommand{
 		{Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
+		{Type: SubCommandPullRequestReview, Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)"},
 		{Type: SubCommandHelp, Description: "Show this help message"},
 	}
 )

@@ -36,7 +36,8 @@ type Processor struct {
 
 var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
-		commands.SubCommandGenerateCheDoc: handlers.NewGenerateCheDocHandler(),
+		commands.SubCommandGenerateCheDoc:    handlers.NewGenerateCheDocHandler(),
+		commands.SubCommandPullRequestReview: handlers.NewOkPRReviewHandler(),
 	}
 )
 
@@ -84,7 +85,7 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	output, err := handler.Run(ctx, prompt, trigger, p.ghClient)
+	outputs, err := handler.Run(ctx, prompt, trigger, p.ghClient)
 
 	if err != nil {
 		log.Printf(
@@ -96,9 +97,9 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 			err,
 		)
 
-		log.Printf("[ERROR] command output:\n%s", string(output))
+		log.Printf("[ERROR] command output:\n%s", strings.Join(outputs, "\n"))
 
-		handler.OnFailure(ctx, output, trigger, p.ghClient)
+		handler.OnFailure(ctx, trigger, p.ghClient)
 	} else {
 		log.Printf(
 			"[INFO] %s completed for %s/%s#%d",
@@ -108,7 +109,7 @@ func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler ha
 			trigger.PRNumber,
 		)
 
-		handler.OnSuccess(ctx, output, trigger, p.ghClient)
+		handler.OnSuccess(ctx, outputs, trigger, p.ghClient)
 	}
 }
 

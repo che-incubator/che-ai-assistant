@@ -13,25 +13,28 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os/exec"
-	"regexp"
+	"strings"
 
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
-var (
-	prURLPattern = regexp.MustCompile(`https://github\.com/eclipse-che/che-docs/pull/\d+`)
-)
+const outputDelimiter = "===OK-PR-REVIEW-OUTPUT==="
 
-type GenerateCheDocHandler struct{}
-
-func NewGenerateCheDocHandler() *GenerateCheDocHandler {
-	return &GenerateCheDocHandler{}
+type claudeOutput struct {
+	Result string `json:"result"`
 }
 
-func (g *GenerateCheDocHandler) Run(
+type OkPRReviewHandler struct{}
+
+func NewOkPRReviewHandler() *OkPRReviewHandler {
+	return &OkPRReviewHandler{}
+}
+
+func (g *OkPRReviewHandler) Run(
 	ctx context.Context,
 	prompt string,
 	trigger *github.Trigger,
@@ -44,26 +47,38 @@ func (g *GenerateCheDocHandler) Run(
 	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
 	rawData, err := cmd.CombinedOutput()
 
-	output := string(rawData)
-
 	if err != nil {
-		return []string{output}, err
+		return []string{string(rawData)}, err
 	}
 
-	prUrl, err := parseDocPRURL(output)
-	if err != nil {
-		return []string{output}, fmt.Errorf("error parsing doc PR URL: %s", err)
+	var parsed claudeOutput
+	if err := json.Unmarshal(rawData, &parsed); err != nil {
+		return []string{string(rawData)}, fmt.Errorf("failed to parse claude JSON output: %w", err)
 	}
 
-	return []string{prUrl}, nil
+	parts := strings.Split(parsed.Result, outputDelimiter)
+
+	var outputs []string
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			outputs = append(outputs, trimmed)
+		}
+	}
+
+	if len(outputs) == 0 {
+		return []string{parsed.Result}, fmt.Errorf("no review outputs found in delimited result")
+	}
+
+	return outputs, nil
 }
 
-func (g *GenerateCheDocHandler) OnFailure(
+func (g *OkPRReviewHandler) OnFailure(
 	ctx context.Context,
 	trigger *github.Trigger,
 	ghClient *github.Client,
 ) {
-	body := fmt.Sprintf("%s\n\nFailed to generate documentation.", trigger.CommentBody)
+	body := fmt.Sprintf("%s\n\nFailed to review the PR.", trigger.CommentBody)
 
 	err := ghClient.UpdatePullRequestComment(
 		ctx,
@@ -83,37 +98,27 @@ func (g *GenerateCheDocHandler) OnFailure(
 	}
 }
 
-func (g *GenerateCheDocHandler) OnSuccess(
+func (g *OkPRReviewHandler) OnSuccess(
 	ctx context.Context,
 	outputs []string,
 	trigger *github.Trigger,
 	ghClient *github.Client,
 ) {
-	body := fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, outputs[0])
-
-	err := ghClient.UpdatePullRequestComment(
-		ctx,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.CommentID,
-		body,
-	)
-
-	if err != nil {
-		log.Printf(
-			"[ERROR] Failed to post on %s/%s#%d",
+	for _, output := range outputs {
+		err := ghClient.PostPullRequestComment(
+			ctx,
 			trigger.Owner,
 			trigger.Repo,
 			trigger.PRNumber,
+			output,
 		)
+		if err != nil {
+			log.Printf(
+				"[ERROR] Failed to post on %s/%s#%d",
+				trigger.Owner,
+				trigger.Repo,
+				trigger.PRNumber,
+			)
+		}
 	}
-}
-
-func parseDocPRURL(output string) (string, error) {
-	match := prURLPattern.FindString(output)
-	if match == "" {
-		return "", fmt.Errorf("no PR URL found in output")
-	}
-
-	return match, nil
 }
