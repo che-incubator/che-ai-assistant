@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	prURLPattern = regexp.MustCompile(`https://github\.com/eclipse-che/che-docs/compare/[^\s"]+`)
+	prURLPattern = regexp.MustCompile(`https://github\.com/eclipse-che/che-docs/pull/\d+`)
 )
 
 type GenerateCheDocHandler struct {
@@ -82,7 +82,7 @@ func (g *GenerateCheDocHandler) OnSuccess(
 func parseDocPRURL(output string) (string, error) {
 	match := prURLPattern.FindString(output)
 	if match == "" {
-		return "", fmt.Errorf("no compare URL found in output")
+		return "", fmt.Errorf("no PR URL found in output")
 	}
 
 	return match, nil
