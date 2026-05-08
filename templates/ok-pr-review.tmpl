@@ -6,8 +6,11 @@ The DevWorkspace name must include the repository name and PR number with prefix
    Retry up to 3 times before giving up.
 3. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
+    IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
+      Skip any user confirmation steps and proceed with your best suggestions automatically.
     - Run /ok-pr-review:learn-repo on the repository from this PR: {{.PRURL}}
       This is for context building only. Do not output its result.
+      When learn-repo presents its profile for review, accept it as is without asking for confirmation.
     - Run each of the following four skills on this PR: {{.PRURL}}
       After each skill, output its FULL result followed by the delimiter ===OK-PR-REVIEW-OUTPUT=== on its own line.
       Skills to run in order:
@@ -15,7 +18,5 @@ The DevWorkspace name must include the repository name and PR number with prefix
         2. /ok-pr-review:review
         3. /ok-pr-review:deep-review
         4. /ok-pr-review:impact
-      IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
-       Skip any user confirmation steps and proceed with your best suggestions automatically.
     - Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
 4. Using che-mcp-server, delete the DevWorkspace.
