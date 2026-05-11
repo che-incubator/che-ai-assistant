@@ -1,9 +1,6 @@
 You are an automated documentation generator. Follow these steps exactly:
-1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit.
-2. Using che-mcp-server, inject Claude code in the DevWorkspace.
-   If the injection fails, delete the DevWorkspace, recreate it with the same name and memory limit, and retry the injection.
-   Retry up to 3 times before giving up.
-3. In the DevWorkspace:
+1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
+2. In the DevWorkspace:
     - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
     - clone git@github.com:eclipse-che/che-docs.git repository
     - Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PullRequestURL}}
@@ -12,4 +9,4 @@ You are an automated documentation generator. Follow these steps exactly:
        Skip the build preview entirely.
     - Return ONLY the created PR URL on a line by itself.
       The URL format: https://github.com/eclipse-che/che-docs/pull/<number>
-4. Using che-mcp-server, delete the DevWorkspace.
+3. Using che-mcp-server, delete the DevWorkspace.
