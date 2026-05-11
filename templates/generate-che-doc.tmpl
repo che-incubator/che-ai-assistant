@@ -1,12 +1,11 @@
 You are an automated documentation generator. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
 2. In the DevWorkspace:
+      IMPORTANT: Do NOT use AskUserQuestion at any point.
+      Skip any user confirmation steps and proceed with your best suggestions automatically.
     - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
     - clone git@github.com:eclipse-che/che-docs.git repository
     - Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PullRequestURL}}
-      IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
-       Skip any user confirmation steps and proceed with your best suggestions automatically.
-       Skip the build preview entirely.
     - IMPORTANT: When creating the PR, use `gh pr create --draft --no-fork` to push the branch directly to eclipse-che/che-docs.
       Do NOT allow gh to fork the repository.
     - Return ONLY the created PR URL on a line by itself.
