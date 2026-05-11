@@ -40,6 +40,10 @@ type ClaudeOutput struct {
 	Result string `json:"result"`
 }
 
+const (
+	devWorkspaceNamePrefix = "che-ai"
+)
+
 var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
 		commands.SubCommandGenerateCheDoc:    handlers.NewGenerateCheDocHandler(),
@@ -207,7 +211,8 @@ func (p *Processor) buildPrompt(trigger *github.Trigger) (string, error) {
 	}
 
 	devWorkspaceName := fmt.Sprintf(
-		"%s-%s-pr-%d",
+		"%s-%s-%s-%d",
+		devWorkspaceNamePrefix,
 		trigger.SubCommand,
 		trigger.Repo,
 		trigger.PRNumber,
