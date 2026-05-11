@@ -1,6 +1,7 @@
 You are an automated PR reviewer. Follow these steps exactly:
 1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
-2. In the DevWorkspace:
+2. Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/`
+3. In the DevWorkspace:
       IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
       Skip any user confirmation steps and proceed with your best suggestions automatically.
     - echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
@@ -15,6 +16,7 @@ You are an automated PR reviewer. Follow these steps exactly:
         3. /ok-pr-review:deep-review
         4. /ok-pr-review:impact
     - Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
-3. Poll for the DevWorkspace task completion at 1-minute intervals.
+4. Poll for the DevWorkspace task completion at 1-minute intervals.
 If no result after 30 minutes, stop the DevWorkspace and report a timeout failure.
-4. Using che-mcp-server, delete the DevWorkspace.
+5. Using che-mcp-server, delete the DevWorkspace.
+
