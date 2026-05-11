@@ -27,13 +27,13 @@ import (
 )
 
 type Trigger struct {
-	Owner       string
-	Repo        string
-	PRNumber    int
-	PRURL       string
-	CommentID   int64
-	CommentBody string
-	SubCommand  commands.SubCommandType
+	Owner          string
+	Repo           string
+	PRNumber       int
+	PullRequestURL string
+	CommentID      int64
+	CommentBody    string
+	SubCommand     commands.SubCommandType
 }
 
 type Client struct {
@@ -88,13 +88,13 @@ func (g *Client) FindTriggerComment(
 		}
 
 		return &Trigger{
-			Owner:       owner,
-			Repo:        repo,
-			CommentID:   comment.GetID(),
-			PRNumber:    pullRequest.GetNumber(),
-			PRURL:       pullRequest.GetHTMLURL(),
-			CommentBody: comment.GetBody(),
-			SubCommand:  subCommand,
+			Owner:          owner,
+			Repo:           repo,
+			CommentID:      comment.GetID(),
+			PRNumber:       pullRequest.GetNumber(),
+			PullRequestURL: pullRequest.GetHTMLURL(),
+			CommentBody:    comment.GetBody(),
+			SubCommand:     subCommand,
 		}, nil
 	}
 

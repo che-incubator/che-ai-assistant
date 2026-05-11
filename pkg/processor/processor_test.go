@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/config"
+	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
 func writeTemplateFile(t *testing.T, dir, name, content string) {
@@ -29,7 +30,7 @@ func writeTemplateFile(t *testing.T, dir, name, content string) {
 
 func TestNew_LoadsTemplatesFromDirectory(t *testing.T) {
 	dir := t.TempDir()
-	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PRURL}}")
+	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PullRequestURL}}")
 
 	cfg := &config.Config{TemplatesDir: dir}
 
@@ -37,13 +38,13 @@ func TestNew_LoadsTemplatesFromDirectory(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, h.templates, commands.SubCommandGenerateCheDoc)
-	assert.Equal(t, "Generate docs for {{.PRURL}}", h.templates[commands.SubCommandGenerateCheDoc])
+	assert.Equal(t, "Generate docs for {{.PullRequestURL}}", h.templates[commands.SubCommandGenerateCheDoc])
 }
 
 func TestNew_LoadsMultipleTemplates(t *testing.T) {
 	dir := t.TempDir()
-	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PRURL}}")
-	writeTemplateFile(t, dir, "review.tmpl", "Review PR {{.PRURL}}")
+	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PullRequestURL}}")
+	writeTemplateFile(t, dir, "review.tmpl", "Review PR {{.PullRequestURL}}")
 
 	cfg := &config.Config{TemplatesDir: dir}
 
@@ -77,7 +78,7 @@ func TestNew_MissingPRURLPlaceholder(t *testing.T) {
 	h, err := New(nil, cfg)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must contain {{.PRURL}}")
+	assert.Contains(t, err.Error(), "must contain {{.PullRequestURL}}")
 	assert.Nil(t, h)
 }
 
@@ -105,7 +106,7 @@ func TestNew_EmptyDirectory(t *testing.T) {
 
 func TestNew_IgnoresNonTmplFiles(t *testing.T) {
 	dir := t.TempDir()
-	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PRURL}}")
+	writeTemplateFile(t, dir, "generate-che-doc.tmpl", "Generate docs for {{.PullRequestURL}}")
 	writeTemplateFile(t, dir, "README.md", "This is not a template")
 
 	cfg := &config.Config{TemplatesDir: dir}
@@ -118,19 +119,31 @@ func TestNew_IgnoresNonTmplFiles(t *testing.T) {
 
 func TestBuildPrompt(t *testing.T) {
 	h := &Processor{templates: map[commands.SubCommandType]string{
-		commands.SubCommandGenerateCheDoc: "Generate docs for {{.PRURL}} please",
+		commands.SubCommandGenerateCheDoc: "Generate docs for {{.PullRequestURL}} in {{.DevWorkspaceName}} please",
 	}}
 
-	result, err := h.buildPrompt(commands.SubCommandGenerateCheDoc, "https://github.com/org/repo/pull/42")
+	trigger := &github.Trigger{
+		Owner:          "org",
+		Repo:           "repo",
+		PRNumber:       42,
+		PullRequestURL: "https://github.com/org/repo/pull/42",
+		SubCommand:     commands.SubCommandGenerateCheDoc,
+	}
+
+	result, err := h.buildPrompt(trigger)
 
 	require.NoError(t, err)
-	assert.Equal(t, "Generate docs for https://github.com/org/repo/pull/42 please", result)
+	assert.Equal(t, "Generate docs for https://github.com/org/repo/pull/42 in generate-che-doc-repo-pr-42 please", result)
 }
 
 func TestBuildPrompt_MissingTemplate(t *testing.T) {
 	h := &Processor{templates: map[commands.SubCommandType]string{}}
 
-	_, err := h.buildPrompt(commands.SubCommandGenerateCheDoc, "https://github.com/org/repo/pull/42")
+	trigger := &github.Trigger{
+		SubCommand: commands.SubCommandGenerateCheDoc,
+	}
+
+	_, err := h.buildPrompt(trigger)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no template found")

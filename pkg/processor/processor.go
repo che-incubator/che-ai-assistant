@@ -82,7 +82,7 @@ func (p *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
 }
 
 func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler handlers.Handler) {
-	prompt, err := p.buildPrompt(trigger.SubCommand, trigger.PRURL)
+	prompt, err := p.buildPrompt(trigger)
 	if err != nil {
 		log.Printf("[ERROR] failed to build prompt for %s: %s", trigger.SubCommand, err)
 		return
@@ -195,10 +195,10 @@ func (p *Processor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
 	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
 }
 
-func (p *Processor) buildPrompt(subCommand commands.SubCommandType, prUrl string) (string, error) {
-	tmplContent, ok := p.templates[subCommand]
+func (p *Processor) buildPrompt(trigger *github.Trigger) (string, error) {
+	tmplContent, ok := p.templates[trigger.SubCommand]
 	if !ok {
-		return "", fmt.Errorf("no template found for subcommand %q", subCommand)
+		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommand)
 	}
 
 	tmpl, err := template.New("prompt").Parse(tmplContent)
@@ -206,8 +206,18 @@ func (p *Processor) buildPrompt(subCommand commands.SubCommandType, prUrl string
 		return "", fmt.Errorf("invalid prompt template: %w", err)
 	}
 
+	devWorkspaceName := fmt.Sprintf(
+		"%s-%s-pr-%d",
+		trigger.SubCommand,
+		trigger.Repo,
+		trigger.PRNumber,
+	)
+
 	var buf strings.Builder
-	data := map[string]string{"PRURL": prUrl}
+	data := map[string]string{
+		"PullRequestURL":   trigger.PullRequestURL,
+		"DevWorkspaceName": devWorkspaceName,
+	}
 
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("prompt template execution failed: %w", err)
@@ -239,8 +249,8 @@ func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {
 			return nil, fmt.Errorf("template %s is empty", entry.Name())
 		}
 
-		if !strings.Contains(content, "{{.PRURL}}") {
-			return nil, fmt.Errorf("template %s must contain {{.PRURL}} placeholder", entry.Name())
+		if !strings.Contains(content, "{{.PullRequestURL}}") {
+			return nil, fmt.Errorf("template %s must contain {{.PullRequestURL}} placeholder", entry.Name())
 		}
 
 		name := strings.TrimSuffix(entry.Name(), ".tmpl")
