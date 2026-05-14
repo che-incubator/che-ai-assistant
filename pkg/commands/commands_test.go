@@ -24,10 +24,12 @@ func TestParse(t *testing.T) {
 		isOk                   bool
 		expectedSubCommandType SubCommandType
 	}{
+		{"blabla /che-ai-assistant generate-che-doc", false, ""},
+		{"blabla\n /che-ai-assistant generate-che-doc", false, ""},
 		{"/che-ai-assistant generate-che-doc", true, SubCommandGenerateCheDoc},
 		{"/che-ai-assistant generate-che-doc\nsome text", true, SubCommandGenerateCheDoc},
 		{"/che-ai-assistant help", true, SubCommandHelp},
-		{"please /che-ai-assistant help thanks", true, SubCommandHelp},
+		{"please /che-ai-assistant help thanks", false, ""},
 		{"/che-ai-assistant   generate-che-doc    ", true, SubCommandGenerateCheDoc},
 		{"\n   /che-ai-assistant generate-che-doc", true, SubCommandGenerateCheDoc},
 		{"/che-ai-assistant", true, SubCommandHelp},

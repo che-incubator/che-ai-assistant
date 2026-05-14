@@ -34,7 +34,7 @@ type SubCommand struct {
 }
 
 var (
-	parsePattern = regexp.MustCompile(regexp.QuoteMeta(Command) + `(?:\s+(\S+))?(?:\s|$)`)
+	parsePattern = regexp.MustCompile(`^\s*` + regexp.QuoteMeta(Command) + `(?:\s+(\S+))?(?:\s|$)`)
 
 	SubCommands = []SubCommand{
 		{Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
