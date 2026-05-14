@@ -62,7 +62,7 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 }
 
 func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
-	log.Printf("[INFO] running %s for %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
 
 	switch trigger.SubCommand {
 	case commands.SubCommandHelp:

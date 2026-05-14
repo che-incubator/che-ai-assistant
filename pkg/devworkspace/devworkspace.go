@@ -27,7 +27,7 @@ const (
 	deleteDevWorkspaceTemplate                 = "Using MCP server `{{.CheMCPServerName}}`, delete the DevWorkspace named `{{.DevWorkspaceName}}`."
 	copyClaudeConfigTemplate                   = "Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/` for DevWorkspace named `{{.DevWorkspaceName}}`."
 	startClaudeTaskInDevWorkspaceTemplate      = "Using MCP server `{{.CheMCPServerName}}`, launch Claude task in DevWorkspace named `{{.DevWorkspaceName}}`: `{{.ClaudeTask}}`."
-	readClaudeTaskStatusInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, check Claude agent status in DevWorkspace named `{{.DevWorkspaceName}}`, in the status check if task is finished or not. Return only one word: Running/Finished"
+	readClaudeTaskStatusInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, check Claude agent status in DevWorkspace named `{{.DevWorkspaceName}}`, in agent the status output check if task is completed or not. Return `Completed` for completed task, and `Running` if not."
 	readClaudeTaskOutputInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, read Claude task output in DevWorkspace named `{{.DevWorkspaceName}}`."
 
 	timeout = 5 * time.Minute

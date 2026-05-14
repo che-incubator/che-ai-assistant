@@ -37,9 +37,9 @@ type Claude struct {
 type Status string
 
 const (
-	TaskStatusRunning  Status = "Running"
-	TaskStatusFinished Status = "Finished"
-	TaskStatusUnknown  Status = "Unknown"
+	TaskStatusRunning   Status = "Running"
+	TaskStatusCompleted Status = "Completed"
+	TaskStatusUnknown   Status = "Unknown"
 )
 
 func NewClaude(cfg *config.Config) *Claude {
@@ -52,21 +52,34 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 
 	outputFile := filepath.Join(r.outputDir, fmt.Sprintf("claude-output-%d.json", time.Now().UnixNano()))
 
-	log.Printf("[INFO] Claude started, prompt:")
-	log.Printf("%s", prompt)
-	log.Printf("[INFO] Claude output: %s", outputFile)
+	log.Printf("[INFO] Claude started the task, output file %s:", outputFile)
+
+	if fileErr := os.WriteFile(outputFile, []byte(prompt), 0644); fileErr != nil {
+		return "", errors.Join(fmt.Errorf("failed to write into %s", outputFile), fileErr)
+	}
 
 	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
 	data, err := cmd.CombinedOutput()
 
 	if data != nil {
-		if writeErr := os.WriteFile(outputFile, data, 0644); writeErr != nil {
-			log.Printf("[ERROR] Failed to write Claude output to %s: %v", outputFile, writeErr)
+		f, fileErr := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
+		defer func() {
+			if err := f.Close(); err != nil {
+
+			}
+		}()
+		if fileErr != nil {
+			return "", errors.Join(fmt.Errorf("failed to open file %s", outputFile), fileErr)
+		}
+
+		_, fileErr = f.Write(data)
+		if fileErr != nil {
+			return "", errors.Join(fmt.Errorf("failed to write into %s", outputFile), fileErr)
 		}
 	}
 
 	if err != nil {
-		return "", errors.Join(fmt.Errorf("Claude failed"), err)
+		return "", errors.Join(fmt.Errorf("Claude failed the task"), err)
 	}
 
 	log.Printf("[INFO] Claude completed the task")
@@ -85,8 +98,8 @@ func ParseStatus(output string) Status {
 	switch {
 	case strings.Contains(normalized, "running"):
 		return TaskStatusRunning
-	case strings.Contains(normalized, "finished"):
-		return TaskStatusFinished
+	case strings.Contains(normalized, "completed"):
+		return TaskStatusCompleted
 	default:
 		return TaskStatusUnknown
 	}

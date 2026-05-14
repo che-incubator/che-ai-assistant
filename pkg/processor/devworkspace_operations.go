@@ -82,7 +82,7 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
 	defer cancel()
 
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(3 * time.Minute)
 	defer ticker.Stop()
 
 	for {
@@ -98,7 +98,7 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 			switch status {
 			case claude.TaskStatusRunning:
 				continue
-			case claude.TaskStatusFinished:
+			case claude.TaskStatusCompleted:
 				return nil
 			default:
 				return fmt.Errorf("unexpected task status %s in the DevWorkspace %s", status, devWorkspaceName)
