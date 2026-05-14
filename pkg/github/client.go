@@ -13,11 +13,8 @@ package github
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v68/github"
 	"github.com/tolusha/che-doc-generator/pkg/config"
@@ -39,24 +36,21 @@ type Trigger struct {
 type Client struct {
 	client       *github.Client
 	allowedUsers []string
-	pollInterval time.Duration
 }
 
 const (
 	eyesReaction = "eyes"
 )
 
-func New(cfg *config.Config) (*Client, error) {
-	token := os.Getenv("CHE_AI_ASSISTANT_GITHUB_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("CHE_AI_ASSISTANT_GITHUB_TOKEN environment variable is required")
-	}
-
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+func NewGitHubClient(cfg *config.Config) *Client {
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.GitHubToken})
 	httpClient := oauth2.NewClient(context.Background(), tokenSource)
 	client := github.NewClient(httpClient)
 
-	return &Client{client: client, allowedUsers: cfg.AllowedUsers, pollInterval: cfg.PollInterval}, nil
+	return &Client{
+		client:       client,
+		allowedUsers: cfg.GitHubAllowedUsers,
+	}
 }
 
 func (g *Client) FindTriggerComment(
@@ -169,7 +163,7 @@ func (g *Client) PostWelcomeComment(
 		owner,
 		repo,
 		pullRequest.GetNumber(),
-		commands.BuildWelcomeMessage(g.pollInterval),
+		commands.BuildWelcomeMessage(),
 	)
 }
 

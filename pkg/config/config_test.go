@@ -26,22 +26,26 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			env: map[string]string{
-				"CHE_AI_ASSISTANT_WATCH_REPOS":    "org/repo1, org/repo2 ",
-				"CHE_AI_ASSISTANT_ALLOWED_USERS":  "alice,bob",
-				"CHE_AI_ASSISTANT_POLL_INTERVAL":  "5m",
-				"CHE_AI_ASSISTANT_TASK_TIMEOUT":   "1h",
-				"CHE_AI_ASSISTANT_MAX_CONCURRENT": "3",
-				"CHE_AI_ASSISTANT_TEMPLATES_DIR":  "/custom/templates",
-				"CHE_AI_ASSISTANT_LOG_FILE":       "/var/log/gen.log",
+				"CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS":   "org/repo1, org/repo2 ",
+				"CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS": "alice,bob",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":         "token",
+				"CHE_AI_ASSISTANT_POLL_INTERVAL":        "5m",
+				"CHE_AI_ASSISTANT_TASK_TIMEOUT":         "1h",
+				"CHE_AI_ASSISTANT_MAX_CONCURRENT":       "3",
+				"CHE_AI_ASSISTANT_TEMPLATES_DIR":        "/custom/templates",
+				"CHE_AI_ASSISTANT_LOG_FILE":             "/var/log/gen.log",
+				"CHE_AI_MCP_SERVER_NAME":                "che-mcp-server",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
-				assert.Equal(t, []string{"org/repo1", "org/repo2"}, cfg.WatchRepos)
-				assert.Equal(t, []string{"alice", "bob"}, cfg.AllowedUsers)
-				assert.Equal(t, 5*time.Minute, cfg.PollInterval)
+				assert.Equal(t, []string{"org/repo1", "org/repo2"}, cfg.GitHubWatchRepos)
+				assert.Equal(t, []string{"alice", "bob"}, cfg.GitHubAllowedUsers)
+				assert.Equal(t, 5*time.Minute, cfg.TasksPollInterval)
 				assert.Equal(t, 1*time.Hour, cfg.TaskTimeout)
-				assert.Equal(t, 3, cfg.MaxConcurrent)
+				assert.Equal(t, 3, cfg.MaxConcurrentTasks)
 				assert.Equal(t, "/custom/templates", cfg.TemplatesDir)
 				assert.Equal(t, "/var/log/gen.log", cfg.LogFile)
+				assert.Equal(t, "token", cfg.GitHubToken)
+				assert.Equal(t, "che-mcp-server", cfg.MCPServerName)
 			},
 		},
 	}
@@ -52,7 +56,7 @@ func TestParse(t *testing.T) {
 				t.Setenv(key, val)
 			}
 
-			cfg, err := Parse()
+			cfg, err := Read()
 
 			assert.NoError(t, err)
 			testCase.assertCfg(t, cfg)

@@ -30,22 +30,23 @@ All configuration is via environment variables.
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
-| `CHE_AI_ASSISTANT_GITHUB_TOKEN` | GitHub API token for the bot |
-| `CHE_AI_ASSISTANT_WATCH_REPOS` | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
-| `CHE_AI_ASSISTANT_ALLOWED_USERS` | Comma-separated list of GitHub usernames authorized to trigger commands |
+| Variable                              | Description |
+|---------------------------------------|-------------|
+| `CHE_AI_ASSISTANT_GITHUB_TOKEN`       | GitHub API token for the bot |
+| `CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS` | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
+| `CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS`      | Comma-separated list of GitHub usernames authorized to trigger commands |
+| `CHE_AI_MCP_SERVER_NAME`              | Name of the MCP server to use for AI operations |
 
 ### Optional
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CHE_AI_ASSISTANT_POLL_INTERVAL` | `5m` | How often to poll for new PR comments |
-| `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m` | Maximum time a handler can run |
-| `CHE_AI_ASSISTANT_MAX_CONCURRENT` | `1` | Maximum number of handlers running concurrently |
-| `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates` | Directory containing prompt templates |
+| Variable | Default                     | Description |
+|----------|-----------------------------|-------------|
+| `CHE_AI_ASSISTANT_POLL_INTERVAL` | `5m`                        | How often to poll for new PR comments |
+| `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m`                       | Maximum time a handler can run |
+| `CHE_AI_ASSISTANT_MAX_CONCURRENT` | `1`                         | Maximum number of handlers running concurrently |
+| `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates`                 | Directory containing prompt templates |
+| `CHE_AI_ASSISTANT_CLAUDE_OUTPUT_DIR` | System temp dir             | Directory for Claude output files |
 | `CHE_AI_ASSISTANT_LOG_FILE` | `/tmp/che-ai-assistant.log` | Log file path |
-| `CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN` | | GitHub token used inside DevWorkspaces for doc generation (needs write access to `eclipse-che/che-docs`) |
 
 ## Build and Run
 

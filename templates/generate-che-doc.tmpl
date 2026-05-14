@@ -1,16 +1,10 @@
-You are an automated documentation generator. Follow these steps exactly:
-1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
-2. Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/`
-3. In the DevWorkspace:
-      IMPORTANT: Do NOT use AskUserQuestion at any point.
-      Skip any user confirmation steps and proceed with your best suggestions automatically.
-    - echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
-    - clone git@github.com:eclipse-che/che-docs.git repository
-    - Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PullRequestURL}}
-    - IMPORTANT: When creating the PR, use `gh pr create --draft --no-fork` to push the branch directly to eclipse-che/che-docs.
-      Do NOT allow gh to fork the repository.
-    - Return ONLY the created PR URL on a line by itself.
-      The URL format: https://github.com/eclipse-che/che-docs/pull/<number>
-4. Poll for the DevWorkspace task completion at 1-minute intervals.
-If no result after 30 minutes, stop the DevWorkspace and report a timeout failure.
-5. Using che-mcp-server, delete the DevWorkspace.
+IMPORTANT: Do NOT use AskUserQuestion at any point.
+Skip any user confirmation steps and proceed with your best suggestions automatically.
+
+- echo $CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN | gh auth login --with-token
+- clone git@github.com:eclipse-che/che-docs.git repository
+- Use the /che-docs-from-pr skill to generate documentation for this PR: {{.PullRequestURL}}
+- IMPORTANT: When creating the PR, use `gh pr create --draft --no-fork` to push the branch directly to eclipse-che/che-docs.
+  Do NOT allow gh to fork the repository.
+- Return ONLY the created PR URL on a line by itself.
+  The URL format: https://github.com/eclipse-che/che-docs/pull/<number>

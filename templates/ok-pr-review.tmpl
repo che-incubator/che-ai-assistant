@@ -1,22 +1,16 @@
-You are an automated PR reviewer. Follow these steps exactly:
-1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
-2. Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/`
-3. In the DevWorkspace:
-      IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
-      Skip any user confirmation steps and proceed with your best suggestions automatically.
-    - echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
-    - Run /ok-pr-review:learn-repo on the repository from this PR: {{.PullRequestURL}}
-      This is for context building only. Do not output its result.
-      When learn-repo presents its profile for review, accept it as is without asking for confirmation.
-    - Run each of the following four skills on this PR: {{.PullRequestURL}}
-      After each skill, output its FULL result followed by the delimiter ===OK-PR-REVIEW-OUTPUT=== on its own line.
-      Skills to run in order:
-        1. /ok-pr-review:summary
-        2. /ok-pr-review:review
-        3. /ok-pr-review:deep-review
-        4. /ok-pr-review:impact
-    - Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
-4. Poll for the DevWorkspace task completion at 1-minute intervals.
-If no result after 30 minutes, stop the DevWorkspace and report a timeout failure.
-5. Using che-mcp-server, delete the DevWorkspace.
+IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
+Skip any user confirmation steps and proceed with your best suggestions automatically.
+
+- echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
+- Run /ok-pr-review:learn-repo on the repository from this PR: {{.PullRequestURL}}
+  This is for context building only. Do not output its result.
+  When learn-repo presents its profile for review, accept it as is without asking for confirmation.
+- Run each of the following four skills on this PR: {{.PullRequestURL}}
+  After each skill, output its FULL result followed by the delimiter ===OK-PR-REVIEW-OUTPUT=== on its own line.
+  Skills to run in order:
+    1. /ok-pr-review:summary
+    2. /ok-pr-review:review
+    3. /ok-pr-review:deep-review
+    4. /ok-pr-review:impact
+- Return ONLY the concatenated delimited output (the four skill results separated by ===OK-PR-REVIEW-OUTPUT===).
 

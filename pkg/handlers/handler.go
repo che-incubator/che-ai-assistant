@@ -19,16 +19,10 @@ import (
 
 // Handler defines the lifecycle for processing a bot subcommand triggered by a PR comment.
 type Handler interface {
-	OnError(
-		ctx context.Context,
-		trigger *github.Trigger,
-		ghClient *github.Client,
-	)
-
 	OnSuccess(
 		ctx context.Context,
 		result string,
 		trigger *github.Trigger,
-		ghClient *github.Client,
+		gitHubClient *github.Client,
 	)
 }

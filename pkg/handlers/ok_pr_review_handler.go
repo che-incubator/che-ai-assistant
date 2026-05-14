@@ -28,18 +28,11 @@ func NewOkPRReviewHandler() *OkPRReviewHandler {
 	return &OkPRReviewHandler{}
 }
 
-func (g *OkPRReviewHandler) OnError(
-	ctx context.Context,
-	trigger *github.Trigger,
-	ghClient *github.Client,
-) {
-}
-
 func (g *OkPRReviewHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,
-	ghClient *github.Client,
+	gitHubClient *github.Client,
 ) {
 	parts := strings.Split(result, outputDelimiter)
 
@@ -54,7 +47,7 @@ func (g *OkPRReviewHandler) OnSuccess(
 	if len(reviews) < 4 {
 		body := fmt.Sprintf("%s\n\nPullRequest review not found.", trigger.CommentBody)
 
-		if err := ghClient.UpdatePullRequestComment(
+		if err := gitHubClient.UpdatePullRequestComment(
 			ctx,
 			trigger.Owner,
 			trigger.Repo,
@@ -62,10 +55,11 @@ func (g *OkPRReviewHandler) OnSuccess(
 			body,
 		); err != nil {
 			log.Printf(
-				"[ERROR] Failed to post on %s/%s#%d",
+				"[ERROR] Failed to post on %s/%s#%d: %v",
 				trigger.Owner,
 				trigger.Repo,
 				trigger.PRNumber,
+				err,
 			)
 		}
 
@@ -73,7 +67,7 @@ func (g *OkPRReviewHandler) OnSuccess(
 	}
 
 	for _, output := range reviews {
-		err := ghClient.PostPullRequestComment(
+		err := gitHubClient.PostPullRequestComment(
 			ctx,
 			trigger.Owner,
 			trigger.Repo,
@@ -82,10 +76,11 @@ func (g *OkPRReviewHandler) OnSuccess(
 		)
 		if err != nil {
 			log.Printf(
-				"[ERROR] Failed to post on %s/%s#%d",
+				"[ERROR] Failed to post on %s/%s#%d: %v",
 				trigger.Owner,
 				trigger.Repo,
 				trigger.PRNumber,
+				err,
 			)
 		}
 	}

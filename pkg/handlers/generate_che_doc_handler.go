@@ -30,18 +30,11 @@ func NewGenerateCheDocHandler() *GenerateCheDocHandler {
 	return &GenerateCheDocHandler{}
 }
 
-func (g *GenerateCheDocHandler) OnError(
-	ctx context.Context,
-	trigger *github.Trigger,
-	ghClient *github.Client,
-) {
-}
-
 func (g *GenerateCheDocHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,
-	ghClient *github.Client,
+	gitHubClient *github.Client,
 ) {
 	var body string
 
@@ -52,7 +45,7 @@ func (g *GenerateCheDocHandler) OnSuccess(
 		body = fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, prUrl)
 	}
 
-	if err := ghClient.UpdatePullRequestComment(
+	if err := gitHubClient.UpdatePullRequestComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -60,10 +53,11 @@ func (g *GenerateCheDocHandler) OnSuccess(
 		body,
 	); err != nil {
 		log.Printf(
-			"[ERROR] Failed to post on %s/%s#%d",
+			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
 			trigger.PRNumber,
+			err,
 		)
 	}
 }

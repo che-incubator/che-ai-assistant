@@ -31,9 +31,9 @@ var (
 )
 
 func main() {
-	cfg, err := config.Parse()
+	cfg, err := config.Read()
 	if err != nil {
-		log.Fatalf("[ERROR] configuration error: %v", err)
+		log.Fatalf("[ERROR] Failed to read configuration: %v", err)
 	}
 
 	setupLogging(cfg.LogFile)
@@ -41,15 +41,14 @@ func main() {
 		_ = log.Writer().(*os.File).Close()
 	}()
 
-	ghClient, err := github.New(cfg)
+	ghClient := github.NewGitHubClient(cfg)
+
+	taskProcessor, err := processor.NewTaskProcessor(cfg)
 	if err != nil {
-		log.Fatalf("[ERROR] github.New: %v", err)
+		log.Fatalf("[ERROR] processor.NewTaskProcessor: %v", err)
 	}
 
-	processor, err := processor.New(ghClient, cfg)
-	if err != nil {
-		log.Fatalf("[ERROR] processor.New: %v", err)
-	}
+	log.Printf("[INFO] starting che-ai-assistant: watching %v, poll every %v", cfg.GitHubWatchRepos, cfg.TasksPollInterval)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -59,12 +58,10 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	poll := pollFunc(ctx, &wg, cfg, ghClient, processor)
+	poll := pollFunc(ctx, &wg, cfg, ghClient, taskProcessor)
 
-	ticker := time.NewTicker(cfg.PollInterval)
+	ticker := time.NewTicker(cfg.TasksPollInterval)
 	defer ticker.Stop()
-
-	log.Printf("[INFO] starting che-ai-assistant: watching %v, poll every %v", cfg.WatchRepos, cfg.PollInterval)
 
 	poll()
 
@@ -96,12 +93,12 @@ func pollFunc(
 	wg *sync.WaitGroup,
 	cfg *config.Config,
 	ghClient *github.Client,
-	processor *processor.Processor,
+	processor *processor.TaskProcessor,
 ) func() {
-	sem := make(chan struct{}, cfg.MaxConcurrent)
+	sem := make(chan struct{}, cfg.MaxConcurrentTasks)
 
 	return func() {
-		for _, repositoryUrl := range cfg.WatchRepos {
+		for _, repositoryUrl := range cfg.GitHubWatchRepos {
 			owner, repo := parseRepoSlug(repositoryUrl)
 			if owner == "" || repo == "" {
 				log.Printf("[ERROR] invalid repo format: %s (expected owner/repo or https://github.com/owner/repo)", repositoryUrl)

@@ -12,10 +12,8 @@
 package commands
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
-	"time"
 )
 
 type SubCommandType string
@@ -36,7 +34,7 @@ type SubCommand struct {
 }
 
 var (
-	parsePattern = regexp.MustCompile(`(?:^|\s)` + regexp.QuoteMeta(Command) + `(?:[ \t]+(\S+))?(?:[ \t]*$|[ \t]*\n|[ \t]+)`)
+	parsePattern = regexp.MustCompile(regexp.QuoteMeta(Command) + `(?:\s+(\S+))?(?:\s|$)`)
 
 	SubCommands = []SubCommand{
 		{Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
@@ -45,13 +43,12 @@ var (
 	}
 )
 
-func BuildWelcomeMessage(pollInterval time.Duration) string {
+func BuildWelcomeMessage() string {
 	var b strings.Builder
 
 	b.WriteString(WelcomeMarker)
 	b.WriteString("\n")
 	b.WriteString("Hi! I'm **che-ai-assistant** — I help with your pull requests.\n\n")
-	b.WriteString(fmt.Sprintf("I check for new commands every **%s** (if I am not busy :) ).\n\n", pollInterval))
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {

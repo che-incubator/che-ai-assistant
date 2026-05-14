@@ -13,11 +13,10 @@ package processor
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -25,19 +24,16 @@ import (
 
 	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/config"
+	"github.com/tolusha/che-doc-generator/pkg/devworkspace"
 	"github.com/tolusha/che-doc-generator/pkg/github"
-	"github.com/tolusha/che-doc-generator/pkg/processor/handlers"
+	"github.com/tolusha/che-doc-generator/pkg/handlers"
 )
 
-type Processor struct {
-	ghClient     *github.Client
-	timeout      time.Duration
-	pollInterval time.Duration
-	templates    map[commands.SubCommandType]string
-}
-
-type ClaudeOutput struct {
-	Result string `json:"result"`
+type TaskProcessor struct {
+	githubClient     *github.Client
+	devWorkspace     *devworkspace.DevWorkspace
+	commandTemplates map[commands.SubCommandType]string
+	taskTimeout      time.Duration
 }
 
 const (
@@ -51,24 +47,21 @@ var (
 	}
 )
 
-func New(
-	ghClient *github.Client,
-	cfg *config.Config,
-) (*Processor, error) {
+func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 	templates, err := loadTemplates(cfg.TemplatesDir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(fmt.Errorf("failed to load templates"), err)
 	}
 
-	return &Processor{
-		ghClient:     ghClient,
-		timeout:      cfg.TaskTimeout,
-		pollInterval: cfg.PollInterval,
-		templates:    templates,
+	return &TaskProcessor{
+		githubClient:     github.NewGitHubClient(cfg),
+		devWorkspace:     devworkspace.NewDevWorkspace(cfg),
+		commandTemplates: templates,
+		taskTimeout:      cfg.TaskTimeout,
 	}, nil
 }
 
-func (p *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
+func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	log.Printf("[INFO] running %s for %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
 
 	switch trigger.SubCommand {
@@ -81,135 +74,15 @@ func (p *Processor) Trigger(ctx context.Context, trigger *github.Trigger) {
 			return
 		}
 
-		p.run(ctx, trigger, handler)
+		p.handle(ctx, trigger, handler)
 	}
 }
 
-func (p *Processor) run(ctx context.Context, trigger *github.Trigger, handler handlers.Handler) {
-	prompt, err := p.buildPrompt(trigger)
-	if err != nil {
-		log.Printf("[ERROR] failed to build prompt for %s: %s", trigger.SubCommand, err)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
-	defer cancel()
-
-	log.Printf("[INFO] Claude prompt >>>>>>>>")
-	log.Printf("%s", prompt)
-	log.Printf("[INFO] Claude prompt <<<<<<<<")
-
-	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
-	data, err := cmd.CombinedOutput()
-
-	claudeOutputFile := filepath.Join(
-		os.TempDir(),
-		fmt.Sprintf(
-			"claude-output-%s-%s-%d-%d.json",
-			trigger.Owner,
-			trigger.Repo,
-			trigger.PRNumber,
-			time.Now().Unix(),
-		),
-	)
-	if writeErr := os.WriteFile(claudeOutputFile, data, 0644); writeErr != nil {
-		log.Printf(
-			"[ERROR] failed to write claude output to %s: %v",
-			claudeOutputFile,
-			writeErr,
-		)
-	} else {
-		log.Printf(
-			"[INFO] Claude output written to %s for %s/%s#%d",
-			claudeOutputFile,
-			trigger.Owner,
-			trigger.Repo,
-			trigger.PRNumber,
-		)
-	}
-
-	if err != nil {
-		log.Printf(
-			"[ERROR] %s failed for %s/%s#%d: %v",
-			trigger.SubCommand,
-			trigger.Owner,
-			trigger.Repo,
-			trigger.PRNumber,
-			err,
-		)
-
-		body := fmt.Sprintf("%s\n\nCommand fialed.", trigger.CommentBody)
-		if err := p.ghClient.UpdatePullRequestComment(
-			ctx,
-			trigger.Owner,
-			trigger.Repo,
-			trigger.CommentID,
-			body,
-		); err != nil {
-			log.Printf(
-				"[ERROR] Failed to post on %s/%s#%d",
-				trigger.Owner,
-				trigger.Repo,
-				trigger.PRNumber,
-			)
-		}
-
-		handler.OnError(
-			ctx,
-			trigger,
-			p.ghClient,
-		)
-	} else {
-		var claudeOutput ClaudeOutput
-		if err := json.Unmarshal(data, &claudeOutput); err != nil {
-			log.Printf("[ERROR] failed to unmarshal claude output: %s", err)
-			return
-		}
-
-		log.Printf(
-			"[INFO] %s completed for %s/%s#%d",
-			trigger.SubCommand,
-			trigger.Owner,
-			trigger.Repo,
-			trigger.PRNumber,
-		)
-
-		handler.OnSuccess(
-			ctx,
-			claudeOutput.Result,
-			trigger,
-			p.ghClient,
-		)
-	}
-}
-
-func (p *Processor) HandleHelp(ctx context.Context, trigger *github.Trigger) {
-	if err := p.ghClient.PostPullRequestComment(
-		ctx,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.PRNumber,
-		commands.BuildWelcomeMessage(p.pollInterval),
-	); err != nil {
-		log.Printf("[ERROR] error posting help comment: %v", err)
-	}
-}
-
-func (p *Processor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
-	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
-}
-
-func (p *Processor) buildPrompt(trigger *github.Trigger) (string, error) {
-	tmplContent, ok := p.templates[trigger.SubCommand]
-	if !ok {
-		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommand)
-	}
-
-	tmpl, err := template.New("prompt").Parse(tmplContent)
-	if err != nil {
-		return "", fmt.Errorf("invalid prompt template: %w", err)
-	}
-
+func (p *TaskProcessor) handle(
+	ctx context.Context,
+	trigger *github.Trigger,
+	handler handlers.Handler,
+) {
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
 		devWorkspaceNamePrefix,
@@ -218,53 +91,187 @@ func (p *Processor) buildPrompt(trigger *github.Trigger) (string, error) {
 		trigger.PRNumber,
 	)
 
-	var buf strings.Builder
-	data := map[string]string{
-		"PullRequestURL":   trigger.PullRequestURL,
-		"DevWorkspaceName": devWorkspaceName,
+	task, err := p.buildPrompt(trigger)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
 	}
 
-	if err := tmpl.Execute(&buf, data); err != nil {
+	err = p.startDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
+	}
+
+	err = p.copyClaudeConfigInDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
+	}
+
+	err = p.runTaskInDevWorkspace(ctx, task, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
+	}
+
+	err = p.waiteTaskFinishedInDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
+	}
+
+	output, err := p.readTaskOutputInDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, err, devWorkspaceName, trigger)
+		return
+	}
+
+	p.OnSuccess(ctx, output, trigger, handler)
+
+	err = p.deleteDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+	}
+}
+
+func (p *TaskProcessor) OnSuccess(
+	ctx context.Context,
+	output string,
+	trigger *github.Trigger,
+	handler handlers.Handler,
+) {
+	log.Printf(
+		"[INFO] %s completed for %s/%s#%d",
+		trigger.SubCommand,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.PRNumber,
+	)
+
+	handler.OnSuccess(
+		ctx,
+		output,
+		trigger,
+		p.githubClient,
+	)
+}
+
+func (p *TaskProcessor) onError(
+	ctx context.Context,
+	err error,
+	devWorkspaceName string,
+	trigger *github.Trigger,
+) {
+	log.Printf(
+		"[ERROR] %s failed for %s/%s#%d: %v",
+		trigger.SubCommand,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.PRNumber,
+		err,
+	)
+
+	body := fmt.Sprintf("%s\n\nCommand failed.", trigger.CommentBody)
+	if err := p.githubClient.UpdatePullRequestComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.CommentID,
+		body,
+	); err != nil {
+		log.Printf(
+			"[ERROR] Failed to post on %s/%s#%d: %v",
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+			err,
+		)
+	}
+
+	err = p.deleteDevWorkspace(ctx, devWorkspaceName)
+	if err != nil {
+		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+	}
+}
+
+func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger) {
+	err := p.githubClient.PostPullRequestComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.PRNumber,
+		commands.BuildWelcomeMessage(),
+	)
+
+	if err != nil {
+		log.Printf(
+			"[ERROR] Failed to post on %s/%s#%d: %v",
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+			err,
+		)
+	}
+}
+
+func (p *TaskProcessor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
+	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
+}
+
+func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
+	commandTemplateContent, ok := p.commandTemplates[trigger.SubCommand]
+	if !ok {
+		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommand)
+	}
+
+	commandTemplate, err := template.New("prompt").Parse(commandTemplateContent)
+	if err != nil {
+		return "", fmt.Errorf("invalid prompt template: %w", err)
+	}
+
+	var prompt strings.Builder
+	data := map[string]string{
+		"PullRequestURL": trigger.PullRequestURL,
+	}
+
+	if err := commandTemplate.Execute(&prompt, data); err != nil {
 		return "", fmt.Errorf("prompt template execution failed: %w", err)
 	}
 
-	return buf.String(), nil
+	return prompt.String(), nil
 }
 
 func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {
-	entries, err := os.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading templates directory: %w", err)
 	}
 
-	templates := make(map[commands.SubCommandType]string)
+	commandsTemplates := make(map[commands.SubCommandType]string)
 
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tmpl") {
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".tmpl") {
 			continue
 		}
 
-		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		data, err := os.ReadFile(filepath.Join(dir, file.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("reading template %s: %w", entry.Name(), err)
+			return nil, fmt.Errorf("reading template %s: %w", file.Name(), err)
 		}
 
 		content := strings.TrimSpace(string(data))
-		if content == "" {
-			return nil, fmt.Errorf("template %s is empty", entry.Name())
-		}
-
 		if !strings.Contains(content, "{{.PullRequestURL}}") {
-			return nil, fmt.Errorf("template %s must contain {{.PullRequestURL}} placeholder", entry.Name())
+			return nil, fmt.Errorf("template %s must contain {{.PullRequestURL}} placeholder", file.Name())
 		}
 
-		name := strings.TrimSuffix(entry.Name(), ".tmpl")
-		templates[commands.SubCommandType(name)] = content
+		name := strings.TrimSuffix(file.Name(), ".tmpl")
+		commandsTemplates[commands.SubCommandType(name)] = content
 	}
 
-	if len(templates) == 0 {
+	if len(commandsTemplates) == 0 {
 		return nil, fmt.Errorf("no templates found in %s", dir)
 	}
 
-	return templates, nil
+	return commandsTemplates, nil
 }

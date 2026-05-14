@@ -21,42 +21,53 @@ import (
 )
 
 const (
-	defaultPollInterval  = "5m"
-	defaultTaskTimeout   = "30m"
-	defaultMaxConcurrent = 1
+	defaultPollInterval       = "5m"
+	defaultTaskTimeout        = "30m"
+	defaultMaxConcurrentTasks = 1
+	defaultTemplatesDir       = "templates"
 )
 
 var (
-	defaultLogFile      = path.Join(os.TempDir(), "che-ai-assistant.log")
-	defaultTemplatesDir = "templates"
+	defaultLogFile         = path.Join(os.TempDir(), "che-ai-pullrequest-assistant.log")
+	defaultClaudeOutputDir = os.TempDir()
 )
 
 type Config struct {
-	WatchRepos    []string
-	AllowedUsers  []string
-	PollInterval  time.Duration
-	TaskTimeout   time.Duration
-	MaxConcurrent int
-	TemplatesDir  string
-	LogFile       string
+	GitHubWatchRepos   []string
+	GitHubAllowedUsers []string
+	GitHubToken        string
+	TasksPollInterval  time.Duration
+	TaskTimeout        time.Duration
+	MaxConcurrentTasks int
+	TemplatesDir       string
+	ClaudeOutputDir    string
+	LogFile            string
+	MCPServerName      string
 }
 
-func Parse() (*Config, error) {
-	reposStr, err := requireEnv("CHE_AI_ASSISTANT_WATCH_REPOS")
+func Read() (*Config, error) {
+	githubToken, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_TOKEN")
 	if err != nil {
 		return nil, err
 	}
 
-	allowedUsersStr, err := requireEnv("CHE_AI_ASSISTANT_ALLOWED_USERS")
+	githubWatchReposStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS")
+	if err != nil {
+		return nil, err
+	}
+
+	githubAllowedUsersStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS")
 	if err != nil {
 		return nil, err
 	}
 
 	templatesDir := optionalEnv("CHE_AI_ASSISTANT_TEMPLATES_DIR", defaultTemplatesDir)
 
+	claudeOutputDir := optionalEnv("CHE_AI_ASSISTANT_CLAUDE_OUTPUT_DIR", defaultClaudeOutputDir)
+
 	logFile := optionalEnv("CHE_AI_ASSISTANT_LOG_FILE", defaultLogFile)
 
-	pollInterval, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_POLL_INTERVAL", defaultPollInterval))
+	tasksPollInterval, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_POLL_INTERVAL", defaultPollInterval))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +77,7 @@ func Parse() (*Config, error) {
 		return nil, err
 	}
 
-	maxConcurrent := defaultMaxConcurrent
+	maxConcurrent := defaultMaxConcurrentTasks
 	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
@@ -78,14 +89,22 @@ func Parse() (*Config, error) {
 		maxConcurrent = n
 	}
 
+	mcpServerName, err := requireEnv("CHE_AI_MCP_SERVER_NAME")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
-		WatchRepos:    splitCSV(reposStr),
-		PollInterval:  pollInterval,
-		TaskTimeout:   taskTimeout,
-		MaxConcurrent: maxConcurrent,
-		TemplatesDir:  templatesDir,
-		AllowedUsers:  splitCSV(allowedUsersStr),
-		LogFile:       logFile,
+		GitHubWatchRepos:   splitCSV(githubWatchReposStr),
+		TasksPollInterval:  tasksPollInterval,
+		TaskTimeout:        taskTimeout,
+		MaxConcurrentTasks: maxConcurrent,
+		TemplatesDir:       templatesDir,
+		ClaudeOutputDir:    claudeOutputDir,
+		GitHubAllowedUsers: splitCSV(githubAllowedUsersStr),
+		LogFile:            logFile,
+		MCPServerName:      mcpServerName,
+		GitHubToken:        githubToken,
 	}, nil
 }
 
