@@ -52,7 +52,7 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 
 	outputFile := filepath.Join(r.outputDir, fmt.Sprintf("claude-output-%d.json", time.Now().UnixNano()))
 
-	log.Printf("[INFO] Claude started the task, output file %s:", outputFile)
+	log.Printf("[INFO] Claude started, output file %s", outputFile)
 
 	if fileErr := os.WriteFile(outputFile, []byte(prompt), 0644); fileErr != nil {
 		return "", errors.Join(fmt.Errorf("failed to write into %s", outputFile), fileErr)
@@ -81,8 +81,6 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 	if err != nil {
 		return "", errors.Join(fmt.Errorf("Claude failed the task"), err)
 	}
-
-	log.Printf("[INFO] Claude completed the task")
 
 	var claudeOutput Output
 	if err := json.Unmarshal(data, &claudeOutput); err != nil {

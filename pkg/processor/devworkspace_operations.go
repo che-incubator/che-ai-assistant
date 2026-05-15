@@ -77,12 +77,10 @@ func (p *TaskProcessor) readTaskOutputInDevWorkspace(ctx context.Context, devWor
 }
 
 func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
-	log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
-
 	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
 	defer cancel()
 
-	ticker := time.NewTicker(3 * time.Minute)
+	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 
 	for {
@@ -90,6 +88,7 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 		case <-ctx.Done():
 			return fmt.Errorf("timed out waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
 		case <-ticker.C:
+			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
 			status, err := p.devWorkspace.ReadClaudeTaskStatus(ctx, devWorkspaceName)
 			if err != nil {
 				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
