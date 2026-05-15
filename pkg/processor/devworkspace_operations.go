@@ -80,6 +80,8 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
 	defer cancel()
 
+	start := time.Now()
+
 	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 
@@ -88,7 +90,7 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 		case <-ctx.Done():
 			return fmt.Errorf("timed out waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
 		case <-ticker.C:
-			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
+			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
 			status, err := p.devWorkspace.ReadClaudeTaskStatus(ctx, devWorkspaceName)
 			if err != nil {
 				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
@@ -98,6 +100,7 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 			case claude.TaskStatusRunning:
 				continue
 			case claude.TaskStatusCompleted:
+				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
 				return nil
 			default:
 				return fmt.Errorf("unexpected task status %s in the DevWorkspace %s", status, devWorkspaceName)
