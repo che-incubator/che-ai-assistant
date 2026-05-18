@@ -90,22 +90,22 @@ var SubCommands = []SubCommand{
 
 ### 2. Create a Prompt Template
 
-Create `templates/my-command.tmpl`. The template is a Go text/template that receives `{{.PRURL}}` — the HTML URL of the triggering pull request.
+Create `templates/my-command.tmpl`. The template is a Go text/template that receives `{{.PullRequestURL}}` — the HTML URL of the triggering pull request.
 
 ```
 You are an automated assistant. Follow these steps exactly:
 1. ...
-2. Use information from this PR: {{.PRURL}}
+2. Use information from this PR: {{.PullRequestURL}}
 3. ...
 ```
 
 Requirements:
-- The template **must** contain the `{{.PRURL}}` placeholder (enforced at startup).
+- The template **must** contain the `{{.PullRequestURL}}` placeholder (enforced at startup).
 - The filename (minus `.tmpl`) must match the `SubCommandType` constant value.
 
 ### 3. Implement the Handler
 
-Create a new file in `pkg/processor/handlers/`, e.g. `my_command_handler.go`. 
+Create a new file in `pkg/handlers/`, e.g. `my_command_handler.go`. 
 Implement the `Handler` interface.
 
 ### 4. Register the Handler

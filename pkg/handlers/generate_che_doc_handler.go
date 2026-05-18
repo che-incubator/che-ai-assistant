@@ -30,6 +30,12 @@ func NewGenerateCheDocHandler() *GenerateCheDocHandler {
 	return &GenerateCheDocHandler{}
 }
 
+func (g *GenerateCheDocHandler) OnError(
+	ctx context.Context,
+	trigger *github.Trigger,
+	gitHubClient *github.Client) {
+}
+
 func (g *GenerateCheDocHandler) OnSuccess(
 	ctx context.Context,
 	result string,

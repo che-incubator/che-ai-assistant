@@ -93,37 +93,37 @@ func (p *TaskProcessor) handle(
 
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	err = p.startDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	err = p.copyClaudeConfigInDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	err = p.runTaskInDevWorkspace(ctx, task, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	err = p.waiteTaskFinishedInDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	output, err := p.readTaskOutputInDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger)
+		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
 	}
 
@@ -162,6 +162,7 @@ func (p *TaskProcessor) onError(
 	err error,
 	devWorkspaceName string,
 	trigger *github.Trigger,
+	handler handlers.Handler,
 ) {
 	log.Printf(
 		"[ERROR] %s failed for %s/%s#%d: %v",
@@ -193,6 +194,12 @@ func (p *TaskProcessor) onError(
 	if err != nil {
 		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 	}
+
+	handler.OnError(
+		ctx,
+		trigger,
+		p.githubClient,
+	)
 }
 
 func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger) {

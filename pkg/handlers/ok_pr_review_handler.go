@@ -13,6 +13,8 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
@@ -23,10 +25,33 @@ func NewOkPRReviewHandler() *OkPRReviewHandler {
 	return &OkPRReviewHandler{}
 }
 
+func (g *OkPRReviewHandler) OnError(
+	ctx context.Context,
+	trigger *github.Trigger,
+	gitHubClient *github.Client) {
+}
+
 func (g *OkPRReviewHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,
 	gitHubClient *github.Client,
 ) {
+	body := fmt.Sprintf("%s\n\nReview is complete. Please check the review comments below.", trigger.CommentBody)
+
+	if err := gitHubClient.UpdatePullRequestComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.CommentID,
+		body,
+	); err != nil {
+		log.Printf(
+			"[ERROR] Failed to post on %s/%s#%d: %v",
+			trigger.Owner,
+			trigger.Repo,
+			trigger.PRNumber,
+			err,
+		)
+	}
 }
