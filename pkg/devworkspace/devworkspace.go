@@ -23,12 +23,13 @@ import (
 )
 
 const (
-	startDevWorkspaceTemplate                  = "Using MCP server `{{.CheMCPServerName}}`, start a DevWorkspace named `{{.DevWorkspaceName}}` and Claude code injected."
-	deleteDevWorkspaceTemplate                 = "Using MCP server `{{.CheMCPServerName}}`, delete the DevWorkspace named `{{.DevWorkspaceName}}`."
-	copyClaudeConfigTemplate                   = "Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/` for DevWorkspace named `{{.DevWorkspaceName}}`."
-	startClaudeTaskInDevWorkspaceTemplate      = "Using MCP server `{{.CheMCPServerName}}`, launch Claude task in DevWorkspace named `{{.DevWorkspaceName}}`: `{{.ClaudeTask}}`."
-	readClaudeTaskStatusInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, check agent phase in DevWorkspace named `{{.DevWorkspaceName}}`. Return one word of Finished/Running/Lost/Idle"
-	readClaudeTaskOutputInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, read Claude task output in DevWorkspace named `{{.DevWorkspaceName}}`."
+	startDevWorkspaceTemplate                          = "Using MCP server `{{.CheMCPServerName}}`, start a DevWorkspace named `{{.DevWorkspaceName}}` and Claude code injected."
+	deleteDevWorkspaceTemplate                         = "Using MCP server `{{.CheMCPServerName}}`, delete the DevWorkspace named `{{.DevWorkspaceName}}`."
+	copyClaudeConfigTemplate                           = "Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/` for DevWorkspace named `{{.DevWorkspaceName}}`."
+	startClaudeTaskInDevWorkspaceTemplate              = "Using MCP server `{{.CheMCPServerName}}`, launch Claude task in DevWorkspace named `{{.DevWorkspaceName}}`: `{{.ClaudeTask}}`."
+	readCompleteClaudeTaskStatusInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, check agent phase in DevWorkspace named `{{.DevWorkspaceName}}`"
+	readClaudeTaskStatusInDevWorkspaceTemplate         = "Using MCP server `{{.CheMCPServerName}}`, check agent phase in DevWorkspace named `{{.DevWorkspaceName}}`. Return one word of Finished/Running/Lost/Idle"
+	readClaudeTaskOutputInDevWorkspaceTemplate         = "Using MCP server `{{.CheMCPServerName}}`, read Claude task output in DevWorkspace named `{{.DevWorkspaceName}}`."
 
 	timeout = 5 * time.Minute
 )
@@ -91,6 +92,23 @@ func (dw *DevWorkspace) ReadClaudeTaskStatus(ctx context.Context, devWorkspaceNa
 		ctx,
 		timeout,
 		readClaudeTaskStatusInDevWorkspaceTemplate,
+		map[string]string{
+			"CheMCPServerName": dw.mcpServerName,
+			"DevWorkspaceName": devWorkspaceName,
+		},
+	)
+	if err != nil {
+		return claude.StatusUnknown, err
+	}
+
+	return claude.ParseStatus(output), nil
+}
+
+func (dw *DevWorkspace) ReadCompleteClaudeTaskStatus(ctx context.Context, devWorkspaceName string) (claude.Status, error) {
+	output, err := dw.doRun(
+		ctx,
+		timeout,
+		readCompleteClaudeTaskStatusInDevWorkspaceTemplate,
 		map[string]string{
 			"CheMCPServerName": dw.mcpServerName,
 			"DevWorkspaceName": devWorkspaceName,

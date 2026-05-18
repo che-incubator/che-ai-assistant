@@ -100,6 +100,9 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 			case claude.StatusRunning:
 				continue
 			case claude.StatusFinished:
+				// For debugging purpose only
+				_, _ = p.devWorkspace.ReadCompleteClaudeTaskStatus(ctx, devWorkspaceName)
+
 				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
 				return nil
 			default:
