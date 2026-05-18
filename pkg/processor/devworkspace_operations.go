@@ -97,9 +97,9 @@ func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, dev
 			}
 
 			switch status {
-			case claude.TaskStatusRunning:
+			case claude.StatusRunning:
 				continue
-			case claude.TaskStatusCompleted:
+			case claude.StatusFinished:
 				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
 				return nil
 			default:

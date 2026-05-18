@@ -37,9 +37,11 @@ type Claude struct {
 type Status string
 
 const (
-	TaskStatusRunning   Status = "Running"
-	TaskStatusCompleted Status = "Completed"
-	TaskStatusUnknown   Status = "Unknown"
+	StatusRunning  Status = "Running"
+	StatusFinished Status = "Finished"
+	StatusLost     Status = "Lost"
+	StatusIdle     Status = "Idle"
+	StatusUnknown  Status = "Unknown"
 )
 
 func NewClaude(cfg *config.Config) *Claude {
@@ -95,10 +97,14 @@ func ParseStatus(output string) Status {
 
 	switch {
 	case strings.Contains(normalized, "running"):
-		return TaskStatusRunning
-	case strings.Contains(normalized, "completed"):
-		return TaskStatusCompleted
+		return StatusRunning
+	case strings.Contains(normalized, "finished"):
+		return StatusFinished
+	case strings.Contains(normalized, "lost"):
+		return StatusLost
+	case strings.Contains(normalized, "idle"):
+		return StatusIdle
 	default:
-		return TaskStatusUnknown
+		return StatusUnknown
 	}
 }
