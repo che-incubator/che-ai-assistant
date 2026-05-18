@@ -56,10 +56,6 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 
 	log.Printf("[INFO] Claude started, output file %s", outputFile)
 
-	if fileErr := os.WriteFile(outputFile, []byte(prompt), 0644); fileErr != nil {
-		return "", errors.Join(fmt.Errorf("failed to write into %s", outputFile), fileErr)
-	}
-
 	cmd := exec.CommandContext(ctx, "claude", "--dangerously-skip-permissions", "-p", prompt, "--output-format", "json")
 	data, err := cmd.CombinedOutput()
 
