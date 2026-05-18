@@ -60,15 +60,11 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 	data, err := cmd.CombinedOutput()
 
 	if data != nil {
-		f, fileErr := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
-		defer func() {
-			if err := f.Close(); err != nil {
-
-			}
-		}()
+		f, fileErr := os.OpenFile(outputFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if fileErr != nil {
 			return "", errors.Join(fmt.Errorf("failed to open file %s", outputFile), fileErr)
 		}
+		defer f.Close()
 
 		_, fileErr = f.Write(data)
 		if fileErr != nil {
