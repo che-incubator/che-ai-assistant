@@ -110,7 +110,7 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	err = p.devWorkspace.RunClaudeTask(ctx, task, devWorkspaceName)
+	err = p.devWorkspace.RunClaudeTask(ctx, devWorkspaceName, task)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return

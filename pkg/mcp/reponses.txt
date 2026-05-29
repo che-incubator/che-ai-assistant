@@ -1,0 +1,170 @@
+====================== 1 ======================
+curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-01-26",
+        "capabilities": {},
+        "clientInfo": { "name": "curl-client", "version": "1.0.0" }
+      }
+    }'
+
+HTTP/1.1 200 OK
+cache-control: no-cache
+connection: keep-alive
+content-type: text/event-stream
+mcp-session-id: d6049a1d-40c5-4d93-8316-ffa88b997f49
+content-length: 192
+Date: Wed, 20 May 2026 09:09:05 GMT
+
+event: message
+data: {"result":{"protocolVersion":"2025-11-25","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"che-mcp-server","version":"0.1.0"}},"jsonrpc":"2.0","id":1}
+
+
+====================== 2 ======================
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 93f1e12a-7c02-4352-8286-4536df872304" \
+    -d '{
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }'
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=UTF-8
+Date: Wed, 20 May 2026 10:10:08 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+====================== 3 ======================
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 93f1e12a-7c02-4352-8286-4536df872304" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "create_workspace",
+        "arguments": {
+          "name": "my-agent-ws",
+          "tools": ["claude-code", "tmux"]
+        }
+      }
+    }'
+HTTP/1.1 200 OK
+cache-control: no-cache
+connection: keep-alive
+content-type: text/event-stream
+mcp-session-id: 8111841a-2d73-45ce-891e-4f18ae8be1ac
+Date: Wed, 20 May 2026 10:33:29 GMT
+Transfer-Encoding: chunked
+
+====================== 4 ======================
+
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 93f1e12a-7c02-4352-8286-4536df872304" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "launch_coding_agent",
+        "arguments": {
+          "workspace": "my-agent-ws",
+          "task": "Print echoooooo",
+          "agent_type": "claude-code"
+        }
+      }
+    }'
+
+HTTP/1.1 200 OK
+cache-control: no-cache
+connection: keep-alive
+content-type: text/event-stream
+mcp-session-id: 93f1e12a-7c02-4352-8286-4536df872304
+Date: Thu, 21 May 2026 08:28:01 GMT
+Transfer-Encoding: chunked
+
+event: message
+data: {"result":{"content":[{"type":"text","text":"{\n  \"status\": \"launched\",\n  \"workspace\": \"my-agent-ws\",\n  \"session\": \"agent\"\n}"}]},"jsonrpc":"2.0","id":4}
+
+
+====================== 5 ======================
+
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 93f1e12a-7c02-4352-8286-4536df872304" \
+    -d '{
+      "jsonrpc":"2.0","id":5,"method":"tools/call",
+      "params":{"name":"get_agent_status","arguments":{"workspace":"my-agent-ws"}}
+    }'
+
+
+HTTP/1.1 200 OK
+cache-control: no-cache
+connection: keep-alive
+content-type: text/event-stream
+mcp-session-id: 93f1e12a-7c02-4352-8286-4536df872304
+Date: Thu, 21 May 2026 08:34:24 GMT
+Transfer-Encoding: chunked
+
+event: message
+data: {"result":{"content":[{"type":"text","text":"{\n  \"workspace\": \"my-agent-ws\",\n  \"phase\": \"finished\",\n  \"agent_type\": \"claude-code\",\n  \"task\": \"Print echoooooo\",\n  \"launched_at\": \"2026-05-21T08:28:03.652Z\",\n  \"exit_code\": null,\n  \"last_output\": \"projects $ claude --dangerously-skip-permissions -p 'Workspace: my-agent-ws\\n> Work directory: /projects\\n>\\n> Print echoooooo'\\nDone! Printed \\\"echoooooo\\\".\\nprojects $\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\n  \"ttyd_url\": \"https://workspacef166d380a73b41ae.apps.che-dev.x6e0.p1.openshiftapps.com/ttyd-terminal/\"\n}"}]},"jsonrpc":"2.0","id":5}
+
+====================== 6 ======================
+
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 93f1e12a-7c02-4352-8286-4536df872304" \
+    -d '{
+      "jsonrpc":"2.0","id":6,"method":"tools/call",
+      "params":{"name":"get_agent_output","arguments":{"workspace":"my-agent-ws","lines":100}}
+    }'
+
+
+  curl -s -D - http://che-mcp-server:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: 8111841a-2d73-45ce-891e-4f18ae8be1ac" \
+    -d '{
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "delete_workspace",
+        "arguments": {
+          "workspace": "my-agent-ws"
+        }
+      }
+    }'
+
+
+data: {"result":{"content":[{"type":"text","text":"Error: HTTP-Code: 404\nMessage: Unknown API Status Code!\nBody: \"{\\\"kind\\\":\\\"Status\\\",\\\"apiVersion\\\":\\\"v1\\\",\\\"metadata\\\":{},\\\"status\\\":\\\"Failure\\\",\\\"message\\\":\\\"devworkspaces.workspace.devfile.io \\\\\\\"my-agent-ws\\\\\\\" not found\\\",\\\"reason\\\":\\\"NotFound\\\",\\\"details\\\":{\\\"name\\\":\\\"my-agent-ws\\\",\\\"group\\\":\\\"workspace.devfile.io\\\",\\\"kind\\\":\\\"devworkspaces\\\"},\\\"code\\\":404}\\n\"\nHeaders: {\"audit-id\":\"d501d13c-d838-4ae6-9881-62643cd4142e\",\"cache-control\":\"no-cache, private\",\"connection\":\"close\",\"content-length\":\"260\",\"content-type\":\"application/json\",\"date\":\"Wed, 20 May 2026 10:15:23 GMT\",\"strict-transport-security\":\"max-age=31536000; includeSubDomains; preload\",\"x-kubernetes-pf-flowschema-uid\":\"911552af-9b16-4527-a3c1-46b57ce3ed34\",\"x-kubernetes-pf-prioritylevel-uid\":\"3e4511c1-35f2-49b2-a7c8-26a9745d43d1\"}"}],"isError":true},"jsonrpc":"2.0","id":3}
+
+
+
+
+
+
+  # Send a message to the running agent (e.g. answer a prompt)
+  curl -s http://localhost:8080/mcp \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -H "Mcp-Session-Id: SESSION_ID" \
+    -d '{
+      "jsonrpc":"2.0","id":7,"method":"tools/call",
+      "params":{"name":"send_message_to_agent","arguments":{"workspace":"my-agent-ws","message":"Yes, proceed"}}
+    }'
