@@ -133,6 +133,8 @@ func (dw *DevWorkspace) ReadClaudeTaskOutput(ctx context.Context, devWorkspaceNa
 		return "", fmt.Errorf("failed to unmarshal Claude task output from the DevWorkspace %s: %w", devWorkspaceName, err)
 	}
 
+	log.Printf("[INFO] DevWorkspace %s, Claude task output ==========\n %s\n=========", devWorkspaceName, taskOutput.Output)
+
 	return taskOutput.Output, nil
 }
 
