@@ -233,6 +233,15 @@ func (c *Client) doPost(
 		return httpResponse, &JsonRpcResponse{}, nil
 	}
 
+	contentType := httpResponse.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "text/event-stream") {
+		rpcResponse, err := parseSSE(httpResponse.Body)
+		if err != nil {
+			return httpResponse, nil, err
+		}
+		return httpResponse, rpcResponse, nil
+	}
+
 	var rpcResponse JsonRpcResponse
 	if err := json.NewDecoder(httpResponse.Body).Decode(&rpcResponse); err != nil {
 		return httpResponse, nil, fmt.Errorf("failed to decode response: %w", err)
@@ -255,8 +264,10 @@ func parseSSE(body interface{ Read([]byte) (int, error) }) (*JsonRpcResponse, er
 		}
 		return &rpcResp, nil
 	}
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("reading SSE stream: %w", err)
 	}
+
 	return nil, fmt.Errorf("no JSON-RPC response found in SSE stream")
 }
