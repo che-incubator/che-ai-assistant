@@ -34,7 +34,7 @@ func TestParse(t *testing.T) {
 				"CHE_AI_ASSISTANT_MAX_CONCURRENT":       "3",
 				"CHE_AI_ASSISTANT_TEMPLATES_DIR":        "/custom/templates",
 				"CHE_AI_ASSISTANT_LOG_FILE":             "/var/log/gen.log",
-				"CHE_AI_MCP_SERVER_NAME":                "che-mcp-server",
+				"CHE_AI_MCP_SERVER_URL":                 "http://che-mcp-server:8080/mcp",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, []string{"org/repo1", "org/repo2"}, cfg.GitHubWatchRepos)
@@ -45,7 +45,7 @@ func TestParse(t *testing.T) {
 				assert.Equal(t, "/custom/templates", cfg.TemplatesDir)
 				assert.Equal(t, "/var/log/gen.log", cfg.LogFile)
 				assert.Equal(t, "token", cfg.GitHubToken)
-				assert.Equal(t, "che-mcp-server", cfg.MCPServerName)
+				assert.Equal(t, "http://che-mcp-server:8080/mcp", cfg.MCPServerURL)
 			},
 		},
 	}

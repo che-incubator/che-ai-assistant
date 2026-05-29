@@ -16,21 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
-
-	"github.com/tolusha/che-doc-generator/pkg/claude"
 )
-
-func (p *TaskProcessor) startDevWorkspace(ctx context.Context, devWorkspaceName string) error {
-	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
-
-	err := p.devWorkspace.Start(ctx, devWorkspaceName)
-	if err != nil {
-		return errors.Join(fmt.Errorf("failed to start DevWorkspace %s", devWorkspaceName), err)
-	}
-
-	return nil
-}
 
 func (p *TaskProcessor) copyClaudeConfigInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
 	log.Printf("[INFO] Copying Claude config in the DevWorkspace %s", devWorkspaceName)
@@ -41,73 +27,4 @@ func (p *TaskProcessor) copyClaudeConfigInDevWorkspace(ctx context.Context, devW
 	}
 
 	return nil
-}
-
-func (p *TaskProcessor) runTaskInDevWorkspace(ctx context.Context, task string, devWorkspaceName string) error {
-	log.Printf("[INFO] Running task in the DevWorkspace %s", devWorkspaceName)
-
-	err := p.devWorkspace.RunClaudeTask(ctx, devWorkspaceName, task)
-	if err != nil {
-		return errors.Join(fmt.Errorf("failed to run task in the DevWorkspace %s", devWorkspaceName), err)
-	}
-
-	return nil
-}
-
-func (p *TaskProcessor) deleteDevWorkspace(ctx context.Context, devWorkspaceName string) error {
-	log.Printf("[INFO] Deleting the DevWorkspace %s", devWorkspaceName)
-
-	err := p.devWorkspace.Delete(ctx, devWorkspaceName)
-	if err != nil {
-		return errors.Join(fmt.Errorf("failed to delete the DevWorkspace %s", devWorkspaceName), err)
-	}
-
-	return nil
-}
-
-func (p *TaskProcessor) readTaskOutputInDevWorkspace(ctx context.Context, devWorkspaceName string) (string, error) {
-	log.Printf("[INFO] Reading task output in the DevWorkspace %s", devWorkspaceName)
-
-	output, err := p.devWorkspace.ReadClaudeTaskOutput(ctx, devWorkspaceName)
-	if err != nil {
-		return "", errors.Join(fmt.Errorf("failed to read task output in the DevWorkspace %s", devWorkspaceName), err)
-	}
-
-	return output, nil
-}
-
-func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
-	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
-	defer cancel()
-
-	start := time.Now()
-
-	ticker := time.NewTicker(2 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timed out waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
-		case <-ticker.C:
-			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
-			status, err := p.devWorkspace.ReadClaudeTaskStatus(ctx, devWorkspaceName)
-			if err != nil {
-				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
-			}
-
-			switch status {
-			case claude.StatusRunning:
-				continue
-			case claude.StatusFinished:
-				// For debugging purpose only
-				_, _ = p.devWorkspace.ReadCompleteClaudeTaskStatus(ctx, devWorkspaceName)
-
-				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
-				return nil
-			default:
-				return fmt.Errorf("unexpected task status %s in the DevWorkspace %s", status, devWorkspaceName)
-			}
-		}
-	}
 }

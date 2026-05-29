@@ -42,7 +42,7 @@ type Config struct {
 	TemplatesDir       string
 	ClaudeOutputDir    string
 	LogFile            string
-	MCPServerName      string
+	MCPServerURL       string
 }
 
 func Read() (*Config, error) {
@@ -89,7 +89,7 @@ func Read() (*Config, error) {
 		maxConcurrent = n
 	}
 
-	mcpServerName, err := requireEnv("CHE_AI_MCP_SERVER_NAME")
+	mcpServerURL, err := requireEnv("CHE_AI_MCP_SERVER_URL")
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func Read() (*Config, error) {
 		ClaudeOutputDir:    claudeOutputDir,
 		GitHubAllowedUsers: splitCSV(githubAllowedUsersStr),
 		LogFile:            logFile,
-		MCPServerName:      mcpServerName,
+		MCPServerURL:       mcpServerURL,
 		GitHubToken:        githubToken,
 	}, nil
 }

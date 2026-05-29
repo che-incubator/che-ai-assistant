@@ -30,12 +30,12 @@ All configuration is via environment variables.
 
 ### Required
 
-| Variable                              | Description |
-|---------------------------------------|-------------|
-| `CHE_AI_ASSISTANT_GITHUB_TOKEN`       | GitHub API token for the bot |
-| `CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS` | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
-| `CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS`      | Comma-separated list of GitHub usernames authorized to trigger commands |
-| `CHE_AI_MCP_SERVER_NAME`              | Name of the MCP server to use for AI operations |
+| Variable                                | Description                                                                                    |
+|-----------------------------------------|------------------------------------------------------------------------------------------------|
+| `CHE_AI_ASSISTANT_GITHUB_TOKEN`         | GitHub API token for the bot                                                                   |
+| `CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS`   | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
+| `CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS` | Comma-separated list of GitHub usernames authorized to trigger commands                        |
+| `CHE_AI_MCP_SERVER_URL`                 | MCP server URL                                                                                 |
 
 ### Optional
 

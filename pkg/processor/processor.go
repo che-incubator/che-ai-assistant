@@ -22,6 +22,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/tolusha/che-doc-generator/pkg/claude"
 	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/config"
 	"github.com/tolusha/che-doc-generator/pkg/devworkspace"
@@ -97,7 +98,7 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	err = p.startDevWorkspace(ctx, devWorkspaceName)
+	err = p.devWorkspace.Start(ctx, devWorkspaceName)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
@@ -109,7 +110,7 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	err = p.runTaskInDevWorkspace(ctx, task, devWorkspaceName)
+	err = p.devWorkspace.RunClaudeTask(ctx, task, devWorkspaceName)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
@@ -121,7 +122,7 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	output, err := p.readTaskOutputInDevWorkspace(ctx, devWorkspaceName)
+	output, err := p.devWorkspace.ReadClaudeTaskOutput(ctx, devWorkspaceName)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
@@ -129,7 +130,7 @@ func (p *TaskProcessor) handle(
 
 	p.OnSuccess(ctx, output, trigger, handler)
 
-	err = p.deleteDevWorkspace(ctx, devWorkspaceName)
+	err = p.devWorkspace.Delete(ctx, devWorkspaceName)
 	if err != nil {
 		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 	}
@@ -190,7 +191,7 @@ func (p *TaskProcessor) onError(
 		)
 	}
 
-	err = p.deleteDevWorkspace(ctx, devWorkspaceName)
+	err = p.devWorkspace.Delete(ctx, devWorkspaceName)
 	if err != nil {
 		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 	}
@@ -247,6 +248,39 @@ func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
 	}
 
 	return prompt.String(), nil
+}
+
+func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
+	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
+	defer cancel()
+
+	start := time.Now()
+
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
+		case <-ticker.C:
+			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
+			status, err := p.devWorkspace.ReadClaudeTaskStatus(ctx, devWorkspaceName)
+			if err != nil {
+				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
+			}
+
+			switch status {
+			case claude.StatusRunning:
+				continue
+			case claude.StatusFinished:
+				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
+				return nil
+			default:
+				return fmt.Errorf("unexpected task status %s in the DevWorkspace %s", status, devWorkspaceName)
+			}
+		}
+	}
 }
 
 func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {

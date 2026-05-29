@@ -13,65 +13,69 @@ package devworkspace
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/tolusha/che-doc-generator/pkg/claude"
 	"github.com/tolusha/che-doc-generator/pkg/config"
+	"github.com/tolusha/che-doc-generator/pkg/mcp"
 )
 
 const (
-	startDevWorkspaceTemplate                          = "Using MCP server `{{.CheMCPServerName}}`, start a DevWorkspace named `{{.DevWorkspaceName}}` and Claude code injected."
-	deleteDevWorkspaceTemplate                         = "Using MCP server `{{.CheMCPServerName}}`, delete the DevWorkspace named `{{.DevWorkspaceName}}`."
-	copyClaudeConfigTemplate                           = "Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/` for DevWorkspace named `{{.DevWorkspaceName}}`."
-	startClaudeTaskInDevWorkspaceTemplate              = "Using MCP server `{{.CheMCPServerName}}`, launch Claude task in DevWorkspace named `{{.DevWorkspaceName}}`: `{{.ClaudeTask}}`."
-	readCompleteClaudeTaskStatusInDevWorkspaceTemplate = "Using MCP server `{{.CheMCPServerName}}`, check agent phase in DevWorkspace named `{{.DevWorkspaceName}}`"
-	readClaudeTaskStatusInDevWorkspaceTemplate         = "Using MCP server `{{.CheMCPServerName}}`, check agent phase in DevWorkspace named `{{.DevWorkspaceName}}`. Return one word of Finished/Running/Lost/Idle"
-	readClaudeTaskOutputInDevWorkspaceTemplate         = "Using MCP server `{{.CheMCPServerName}}`, read Claude task output in DevWorkspace named `{{.DevWorkspaceName}}`."
+	copyClaudeConfigTemplate = "Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/` for DevWorkspace named `{{.DevWorkspaceName}}`."
 
 	timeout = 5 * time.Minute
 )
 
 type DevWorkspace struct {
-	claude        *claude.Claude
-	mcpServerName string
+	mcpClient *mcp.Client
+	claude    *claude.Claude
 }
 
 func NewDevWorkspace(cfg *config.Config) *DevWorkspace {
 	return &DevWorkspace{
-		claude:        claude.NewClaude(cfg),
-		mcpServerName: cfg.MCPServerName,
+		mcpClient: mcp.New(cfg.MCPServerURL),
+		claude:    claude.New(cfg),
 	}
 }
 
 func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string) error {
-	_, err := dw.doRun(
+	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
+
+	_, err := dw.mcpClient.CallTool(
 		ctx,
-		timeout,
-		startDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
+		mcp.ToolCreateWorkspace,
+		map[string]interface{}{
+			"name":  devWorkspaceName,
+			"tools": []string{"claude-code", "tmux"},
 		},
 	)
+	if err != nil {
+		return fmt.Errorf("failed to start the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
 
-	return err
+	return nil
 }
 
 func (dw *DevWorkspace) Delete(ctx context.Context, devWorkspaceName string) error {
-	_, err := dw.doRun(
+	log.Printf("[INFO] Deleting the DevWorkspace %s", devWorkspaceName)
+
+	_, err := dw.mcpClient.CallTool(
 		ctx,
-		timeout,
-		deleteDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
+		mcp.ToolDeleteWorkspace,
+		map[string]interface{}{
+			"workspace": devWorkspaceName,
 		},
 	)
+	if err != nil {
+		return fmt.Errorf("failed to delete the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
 
-	return err
+	return nil
 }
 
 func (dw *DevWorkspace) CopyClaudeConfig(ctx context.Context, devWorkspaceName string) error {
@@ -88,64 +92,67 @@ func (dw *DevWorkspace) CopyClaudeConfig(ctx context.Context, devWorkspaceName s
 }
 
 func (dw *DevWorkspace) ReadClaudeTaskStatus(ctx context.Context, devWorkspaceName string) (claude.Status, error) {
-	output, err := dw.doRun(
+	log.Printf("[INFO] Reading Claude task status in the DevWorkspace %s", devWorkspaceName)
+
+	output, err := dw.mcpClient.CallTool(
 		ctx,
-		timeout,
-		readClaudeTaskStatusInDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
+		mcp.ToolGetAgentStatus,
+		map[string]interface{}{
+			"workspace": devWorkspaceName,
 		},
 	)
 	if err != nil {
-		return claude.StatusUnknown, err
+		return claude.StatusUnknown, fmt.Errorf("failed to read Claude task status in the DevWorkspace %s: %w", devWorkspaceName, err)
 	}
 
-	return claude.ParseStatus(output), nil
-}
-
-func (dw *DevWorkspace) ReadCompleteClaudeTaskStatus(ctx context.Context, devWorkspaceName string) (claude.Status, error) {
-	output, err := dw.doRun(
-		ctx,
-		timeout,
-		readCompleteClaudeTaskStatusInDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
-		},
-	)
-	if err != nil {
-		return claude.StatusUnknown, err
+	var taskStatus mcp.TaskStatus
+	if err := json.Unmarshal([]byte(output), &taskStatus); err != nil {
+		return "", fmt.Errorf("failed to unmarshal Claude task status from the DevWorkspace %s: %w", devWorkspaceName, err)
 	}
 
-	return claude.ParseStatus(output), nil
+	return claude.ParseStatus(taskStatus.Phase), nil
 }
 
 func (dw *DevWorkspace) ReadClaudeTaskOutput(ctx context.Context, devWorkspaceName string) (string, error) {
-	return dw.doRun(
+	log.Printf("[INFO] Reading Claude task output in the DevWorkspace %s", devWorkspaceName)
+
+	output, err := dw.mcpClient.CallTool(
 		ctx,
-		timeout,
-		readClaudeTaskOutputInDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
+		mcp.ToolGetAgentOutput,
+		map[string]interface{}{
+			"workspace": devWorkspaceName,
+			"lines":     100,
 		},
 	)
+	if err != nil {
+		return "", fmt.Errorf("failed to read Claude task output in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	var taskOutput mcp.TaskOutput
+	if err := json.Unmarshal([]byte(output), &taskOutput); err != nil {
+		return "", fmt.Errorf("failed to unmarshal Claude task output from the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	return taskOutput.Output, nil
 }
 
 func (dw *DevWorkspace) RunClaudeTask(ctx context.Context, devWorkspaceName string, task string) error {
-	_, err := dw.doRun(
+	log.Printf("[INFO] Running Claude task in the DevWorkspace %s", devWorkspaceName)
+
+	_, err := dw.mcpClient.CallTool(
 		ctx,
-		timeout,
-		startClaudeTaskInDevWorkspaceTemplate,
-		map[string]string{
-			"CheMCPServerName": dw.mcpServerName,
-			"DevWorkspaceName": devWorkspaceName,
-			"ClaudeTask":       task,
+		mcp.ToolLaunchCodingAgent,
+		map[string]interface{}{
+			"workspace":  devWorkspaceName,
+			"task":       task,
+			"agent_type": mcp.AgentClaude,
 		},
 	)
+	if err != nil {
+		return fmt.Errorf("failed to run task in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
 
-	return err
+	return nil
 }
 
 func (dw *DevWorkspace) doRun(

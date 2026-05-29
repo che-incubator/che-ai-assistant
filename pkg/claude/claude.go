@@ -44,7 +44,7 @@ const (
 	StatusUnknown  Status = "Unknown"
 )
 
-func NewClaude(cfg *config.Config) *Claude {
+func New(cfg *config.Config) *Claude {
 	return &Claude{outputDir: cfg.ClaudeOutputDir}
 }
 
@@ -64,7 +64,9 @@ func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) 
 		if fileErr != nil {
 			return "", errors.Join(fmt.Errorf("failed to open file %s", outputFile), fileErr)
 		}
-		defer f.Close()
+		defer func() {
+			_ = f.Close()
+		}()
 
 		_, fileErr = f.Write(data)
 		if fileErr != nil {
