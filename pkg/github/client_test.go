@@ -261,3 +261,66 @@ func TestUpdatePullRequestComment(t *testing.T) {
 		t.Error("expected comment to be updated")
 	}
 }
+
+func TestHasWarningComment(t *testing.T) {
+	client := newTestClient(nil, "http://unused")
+
+	withMarker := []*gh.IssueComment{
+		{Body: gh.Ptr("regular comment")},
+		{Body: gh.Ptr(commands.WarningMarker + "\n⚠️ **Warning**")},
+	}
+	if !client.HasWarningComment(withMarker) {
+		t.Error("expected warning comment to be found")
+	}
+
+	withoutMarker := []*gh.IssueComment{
+		{Body: gh.Ptr("regular comment")},
+	}
+	if client.HasWarningComment(withoutMarker) {
+		t.Error("expected no warning comment")
+	}
+}
+
+func TestGetPullRequestFiles(t *testing.T) {
+	callCount := 0
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /repos/org/repo/pulls/1/files", func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		page := r.URL.Query().Get("page")
+
+		if page == "" || page == "1" {
+			w.Header().Set("Link", `<`+r.URL.Path+`?page=2>; rel="next"`)
+			json.NewEncoder(w).Encode([]*gh.CommitFile{
+				{Filename: gh.Ptr(".claude/settings.json")},
+				{Filename: gh.Ptr("main.go")},
+			})
+		} else {
+			json.NewEncoder(w).Encode([]*gh.CommitFile{
+				{Filename: gh.Ptr(".vscode/launch.json")},
+			})
+		}
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient(nil, srv.URL)
+
+	files, err := client.GetPullRequestFiles(context.Background(), "org", "repo", 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("expected 3 files, got %d", len(files))
+	}
+	if files[0].GetFilename() != ".claude/settings.json" {
+		t.Errorf("expected first file .claude/settings.json, got %s", files[0].GetFilename())
+	}
+	if files[2].GetFilename() != ".vscode/launch.json" {
+		t.Errorf("expected third file .vscode/launch.json, got %s", files[2].GetFilename())
+	}
+	if callCount != 2 {
+		t.Errorf("expected 2 API calls (pagination), got %d", callCount)
+	}
+}

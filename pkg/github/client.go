@@ -181,6 +181,12 @@ func (g *Client) HasWelcomeComment(comments []*github.IssueComment) bool {
 	})
 }
 
+func (g *Client) HasWarningComment(comments []*github.IssueComment) bool {
+	return slices.ContainsFunc(comments, func(c *github.IssueComment) bool {
+		return strings.Contains(c.GetBody(), commands.WarningMarker)
+	})
+}
+
 func (g *Client) PostPullRequestComment(
 	ctx context.Context,
 	owner, repo string,
@@ -261,4 +267,30 @@ func (g *Client) HasIssueCommentEyesReaction(
 	}
 
 	return false, nil
+}
+
+func (g *Client) GetPullRequestFiles(
+	ctx context.Context,
+	owner, repo string,
+	pullRequestNumber int,
+) ([]*github.CommitFile, error) {
+	var result []*github.CommitFile
+
+	opts := &github.ListOptions{PerPage: 100}
+
+	for {
+		files, resp, err := g.client.PullRequests.ListFiles(ctx, owner, repo, pullRequestNumber, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, files...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	return result, nil
 }

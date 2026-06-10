@@ -31,10 +31,12 @@ import (
 )
 
 type TaskProcessor struct {
-	githubClient     *github.Client
-	devWorkspace     *devworkspace.DevWorkspace
-	commandTemplates map[commands.SubCommandType]string
-	taskTimeout      time.Duration
+	githubClient       *github.Client
+	devWorkspace       *devworkspace.DevWorkspace
+	commandTemplates   map[commands.SubCommandType]string
+	taskTimeout        time.Duration
+	claudeOutputDir    string
+	deleteDevWorkspace bool
 }
 
 const (
@@ -55,10 +57,12 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 	}
 
 	return &TaskProcessor{
-		githubClient:     github.NewGitHubClient(cfg),
-		devWorkspace:     devworkspace.NewDevWorkspace(cfg),
-		commandTemplates: templates,
-		taskTimeout:      cfg.TaskTimeout,
+		githubClient:       github.NewGitHubClient(cfg),
+		devWorkspace:       devworkspace.NewDevWorkspace(cfg),
+		commandTemplates:   templates,
+		taskTimeout:        cfg.TaskTimeout,
+		claudeOutputDir:    cfg.ClaudeOutputDir,
+		deleteDevWorkspace: cfg.DeleteDevWorkspace,
 	}, nil
 }
 
@@ -92,6 +96,15 @@ func (p *TaskProcessor) handle(
 		trigger.PRNumber,
 	)
 
+	defer func() {
+		if p.deleteDevWorkspace {
+			err := p.devWorkspace.Delete(ctx, devWorkspaceName)
+			if err != nil {
+				log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+			}
+		}
+	}()
+
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
@@ -104,7 +117,7 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	err = p.copyClaudeConfigInDevWorkspace(ctx, devWorkspaceName)
+	err = p.devWorkspace.CopyClaudeConfigInDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
 		p.onError(ctx, err, devWorkspaceName, trigger, handler)
 		return
@@ -116,24 +129,19 @@ func (p *TaskProcessor) handle(
 		return
 	}
 
-	err = p.waiteTaskFinishedInDevWorkspace(ctx, devWorkspaceName)
-	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
-		return
-	}
+	waitTaskFinishedErr := p.waitTaskFinishedInDevWorkspace(ctx, devWorkspaceName)
 
-	output, err := p.devWorkspace.ReadClaudeTaskOutput(ctx, devWorkspaceName)
-	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
+	output, readClaudeTaskOutputErr := p.devWorkspace.ReadClaudeTaskOutput(ctx, devWorkspaceName)
+
+	if waitTaskFinishedErr != nil {
+		p.onError(ctx, waitTaskFinishedErr, devWorkspaceName, trigger, handler)
+		return
+	} else if readClaudeTaskOutputErr != nil {
+		p.onError(ctx, readClaudeTaskOutputErr, devWorkspaceName, trigger, handler)
 		return
 	}
 
 	p.OnSuccess(ctx, output, trigger, handler)
-
-	err = p.devWorkspace.Delete(ctx, devWorkspaceName)
-	if err != nil {
-		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
-	}
 }
 
 func (p *TaskProcessor) OnSuccess(
@@ -142,12 +150,26 @@ func (p *TaskProcessor) OnSuccess(
 	trigger *github.Trigger,
 	handler handlers.Handler,
 ) {
+	outputFile := filepath.Join(
+		p.claudeOutputDir,
+		fmt.Sprintf("claude-%d.txt", time.Now().UnixNano()),
+	)
+
+	if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
+		log.Printf("[ERROR] Failed to write Claude task output to %s: %v", outputFile, err)
+	}
+
 	log.Printf(
-		"[INFO] %s completed for %s/%s#%d",
+		"[INFO] %s completed for %s/%s#%d, see https://github.com/%s/%s/pull/%d#issuecomment-%d, output %s",
 		trigger.SubCommand,
 		trigger.Owner,
 		trigger.Repo,
 		trigger.PRNumber,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.PRNumber,
+		trigger.CommentID,
+		outputFile,
 	)
 
 	handler.OnSuccess(
@@ -189,11 +211,6 @@ func (p *TaskProcessor) onError(
 			trigger.PRNumber,
 			err,
 		)
-	}
-
-	err = p.devWorkspace.Delete(ctx, devWorkspaceName)
-	if err != nil {
-		log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 	}
 
 	handler.OnError(
@@ -250,13 +267,13 @@ func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
 	return prompt.String(), nil
 }
 
-func (p *TaskProcessor) waiteTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
+func (p *TaskProcessor) waitTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
 	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
 	defer cancel()
 
 	start := time.Now()
 
-	ticker := time.NewTicker(2 * time.Minute)
+	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
 	for {

@@ -14,6 +14,7 @@ package devworkspace
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -92,8 +93,6 @@ func (dw *DevWorkspace) CopyClaudeConfig(ctx context.Context, devWorkspaceName s
 }
 
 func (dw *DevWorkspace) ReadClaudeTaskStatus(ctx context.Context, devWorkspaceName string) (claude.Status, error) {
-	log.Printf("[INFO] Reading Claude task status in the DevWorkspace %s", devWorkspaceName)
-
 	output, err := dw.mcpClient.CallTool(
 		ctx,
 		mcp.ToolGetAgentStatus,
@@ -133,8 +132,6 @@ func (dw *DevWorkspace) ReadClaudeTaskOutput(ctx context.Context, devWorkspaceNa
 		return "", fmt.Errorf("failed to unmarshal Claude task output from the DevWorkspace %s: %w", devWorkspaceName, err)
 	}
 
-	log.Printf("[INFO] DevWorkspace %s, Claude task output ==========\n %s\n=========", devWorkspaceName, taskOutput.Output)
-
 	return taskOutput.Output, nil
 }
 
@@ -152,6 +149,17 @@ func (dw *DevWorkspace) RunClaudeTask(ctx context.Context, devWorkspaceName stri
 	)
 	if err != nil {
 		return fmt.Errorf("failed to run task in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	return nil
+}
+
+func (dw *DevWorkspace) CopyClaudeConfigInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
+	log.Printf("[INFO] Copying Claude config in the DevWorkspace %s", devWorkspaceName)
+
+	err := dw.CopyClaudeConfig(ctx, devWorkspaceName)
+	if err != nil {
+		return errors.Join(fmt.Errorf("failed to copy Claude config in the DevWorkspace %s", devWorkspaceName), err)
 	}
 
 	return nil

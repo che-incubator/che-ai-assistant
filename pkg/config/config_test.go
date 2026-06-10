@@ -48,6 +48,29 @@ func TestParse(t *testing.T) {
 				assert.Equal(t, "http://che-mcp-server:8080/mcp", cfg.MCPServerURL)
 			},
 		},
+		{
+			env: map[string]string{
+				"CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS":   "org/repo1",
+				"CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS": "alice",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":         "token",
+				"CHE_AI_MCP_SERVER_URL":                 "http://mcp:8080",
+				"CHE_AI_ASSISTANT_WARN_DIRS_COMMITS":    ".claude,.vscode,.idea",
+			},
+			assertCfg: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, []string{".claude", ".vscode", ".idea"}, cfg.WarnDirsCommits)
+			},
+		},
+		{
+			env: map[string]string{
+				"CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS":   "org/repo1",
+				"CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS": "alice",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":         "token",
+				"CHE_AI_MCP_SERVER_URL":                 "http://mcp:8080",
+			},
+			assertCfg: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, []string{".claude", ".vscode"}, cfg.WarnDirsCommits)
+			},
+		},
 	}
 
 	for i, testCase := range testCases {

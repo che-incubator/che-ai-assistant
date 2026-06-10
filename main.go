@@ -21,9 +21,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/config"
 	"github.com/tolusha/che-doc-generator/pkg/github"
 	"github.com/tolusha/che-doc-generator/pkg/processor"
+	"github.com/tolusha/che-doc-generator/pkg/scanner"
 )
 
 var (
@@ -125,6 +127,24 @@ func pollFunc(
 					err := ghClient.PostWelcomeComment(ctx, owner, repo, pullRequest)
 					if err != nil {
 						log.Printf("[ERROR] failed to post welcome comment: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+					}
+				}
+
+				// post warning message
+				if !ghClient.HasWarningComment(comments) {
+					files, err := ghClient.GetPullRequestFiles(ctx, owner, repo, pullRequest.GetNumber())
+					if err != nil {
+						log.Printf("[ERROR] failed to fetch pull request files: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+					} else {
+						matched := scanner.CheckFiles(files, cfg.WarnDirsCommits)
+						if len(matched) > 0 {
+							log.Printf("[INFO] posting warning comment on %s/%s#%d for files: %v", owner, repo, pullRequest.GetNumber(), matched)
+
+							err := ghClient.PostPullRequestComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildWarningMessage(matched))
+							if err != nil {
+								log.Printf("[ERROR] failed to post warning comment: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+							}
+						}
 					}
 				}
 

@@ -49,3 +49,20 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildWarningMessage(t *testing.T) {
+	files := []string{".claude/settings.json", ".vscode/launch.json"}
+	msg := BuildWarningMessage(files)
+
+	assert.Contains(t, msg, WarningMarker)
+	assert.Contains(t, msg, ".claude/settings.json")
+	assert.Contains(t, msg, ".vscode/launch.json")
+}
+
+func TestBuildWarningMessage_SingleFile(t *testing.T) {
+	files := []string{".idea/workspace.xml"}
+	msg := BuildWarningMessage(files)
+
+	assert.Contains(t, msg, WarningMarker)
+	assert.Contains(t, msg, ".idea/workspace.xml")
+}

@@ -25,6 +25,8 @@ const (
 	defaultTaskTimeout        = "30m"
 	defaultMaxConcurrentTasks = 1
 	defaultTemplatesDir       = "templates"
+	defaultDeleteDevWorkspace = "true"
+	defaultWarnDirs           = ".claude,.vscode"
 )
 
 var (
@@ -43,6 +45,8 @@ type Config struct {
 	ClaudeOutputDir    string
 	LogFile            string
 	MCPServerURL       string
+	DeleteDevWorkspace bool
+	WarnDirsCommits    []string
 }
 
 func Read() (*Config, error) {
@@ -94,6 +98,13 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
+	deleteDevWorkspace, err := strconv.ParseBool(optionalEnv("CHE_DELETE_DEV_WORKSPACE", defaultDeleteDevWorkspace))
+	if err != nil {
+		return nil, err
+	}
+
+	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
+
 	return &Config{
 		GitHubWatchRepos:   splitCSV(githubWatchReposStr),
 		TasksPollInterval:  tasksPollInterval,
@@ -105,6 +116,8 @@ func Read() (*Config, error) {
 		LogFile:            logFile,
 		MCPServerURL:       mcpServerURL,
 		GitHubToken:        githubToken,
+		DeleteDevWorkspace: deleteDevWorkspace,
+		WarnDirsCommits:    warnDirsCommits,
 	}, nil
 }
 

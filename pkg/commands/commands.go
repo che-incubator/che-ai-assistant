@@ -22,6 +22,7 @@ const (
 	Command = "/che-ai-assistant"
 
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
+	WarningMarker = "<!-- che-ai-assistant:file-warning -->"
 
 	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
@@ -54,6 +55,23 @@ func BuildWelcomeMessage() string {
 	for _, subCommand := range SubCommands {
 		b.WriteString("- `" + Command + " " + string(subCommand.Type) + "` — " + subCommand.Description + "\n")
 	}
+
+	return b.String()
+}
+
+func BuildWarningMessage(files []string) string {
+	var b strings.Builder
+
+	b.WriteString(WarningMarker)
+	b.WriteString("\n")
+	b.WriteString("⚠️ **Warning: IDE/tool configuration files detected**\n\n")
+	b.WriteString("This PR contains changes to files in directories that are typically not intended to be committed:\n\n")
+
+	for _, f := range files {
+		b.WriteString("- `" + f + "`\n")
+	}
+
+	b.WriteString("\nPlease verify these changes are intentional.\n")
 
 	return b.String()
 }
