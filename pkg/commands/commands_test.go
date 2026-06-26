@@ -82,13 +82,13 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 		},
 		{
 			name:     "restricted command available for allowed repo",
-			sub:      SubCommandTestReadiness,
+			sub:      SubCommandPullRequestReadiness,
 			repo:     "devfile/devworkspace-operator",
 			expected: true,
 		},
 		{
 			name:     "restricted command unavailable for other repo",
-			sub:      SubCommandTestReadiness,
+			sub:      SubCommandPullRequestReadiness,
 			repo:     "eclipse-che/che-dashboard",
 			expected: false,
 		},
@@ -108,7 +108,7 @@ func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
 	assert.Contains(t, msg, string(SubCommandHelp))
-	assert.Contains(t, msg, string(SubCommandTestReadiness))
+	assert.Contains(t, msg, string(SubCommandPullRequestReadiness))
 }
 
 func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
@@ -117,23 +117,23 @@ func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
 	assert.Contains(t, msg, string(SubCommandHelp))
-	assert.NotContains(t, msg, string(SubCommandTestReadiness))
+	assert.NotContains(t, msg, string(SubCommandPullRequestReadiness))
 }
 
 func TestAutoTriggerMarker(t *testing.T) {
-	marker := AutoTriggerMarker(SubCommandTestReadiness)
-	assert.Equal(t, "<!-- che-ai-assistant:auto-trigger:ok-pr-test-readiness -->", marker)
+	marker := AutoTriggerMarker(SubCommandPullRequestReadiness)
+	assert.Equal(t, "<!-- che-ai-assistant:auto-trigger:ok-pr-readiness -->", marker)
 }
 
 func TestBuildAutoTriggerComment_IsParseable(t *testing.T) {
-	body := BuildAutoTriggerComment(SubCommandTestReadiness)
+	body := BuildAutoTriggerComment(SubCommandPullRequestReadiness)
 	ok, sub := Parse(body)
 	assert.True(t, ok)
-	assert.Equal(t, SubCommandTestReadiness, sub)
+	assert.Equal(t, SubCommandPullRequestReadiness, sub)
 }
 
 func TestIsAutoTriggerComment(t *testing.T) {
-	assert.True(t, IsAutoTriggerComment(BuildAutoTriggerComment(SubCommandTestReadiness)))
-	assert.False(t, IsAutoTriggerComment("/che-ai-assistant ok-pr-test-readiness"))
+	assert.True(t, IsAutoTriggerComment(BuildAutoTriggerComment(SubCommandPullRequestReadiness)))
+	assert.False(t, IsAutoTriggerComment("/che-ai-assistant ok-pr-readiness"))
 	assert.False(t, IsAutoTriggerComment("just a regular comment"))
 }

@@ -45,9 +45,9 @@ const (
 
 var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
-		commands.SubCommandGenerateCheDoc:    handlers.NewGenerateCheDocHandler(),
-		commands.SubCommandPullRequestReview: handlers.NewOkPRReviewHandler(),
-		commands.SubCommandTestReadiness:     handlers.NewOkPRTestReadinessHandler(),
+		commands.SubCommandGenerateCheDoc:       handlers.NewGenerateCheDocHandler(),
+		commands.SubCommandPullRequestReview:    handlers.NewOkPRReviewHandler(),
+		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
 	}
 )
 

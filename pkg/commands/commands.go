@@ -29,10 +29,10 @@ const (
 	AutoTriggerMarkerPrefix = "<!-- che-ai-assistant:auto-trigger:"
 	AutoTriggerMarkerFmt    = AutoTriggerMarkerPrefix + "%s -->"
 
-	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
-	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
-	SubCommandTestReadiness     SubCommandType = "ok-pr-test-readiness"
-	SubCommandHelp              SubCommandType = "help"
+	SubCommandGenerateCheDoc       SubCommandType = "generate-che-doc"
+	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
+	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
+	SubCommandHelp                 SubCommandType = "help"
 )
 
 type SubCommand struct {
@@ -55,7 +55,7 @@ var (
 			Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)",
 		},
 		{
-			Type:         SubCommandTestReadiness,
+			Type:         SubCommandPullRequestReadiness,
 			Description:  "Ensure PR has validation steps",
 			AllowedRepos: []string{"devfile/devworkspace-operator"},
 			AutoTrigger:  true,
