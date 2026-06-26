@@ -157,7 +157,7 @@ func pollFunc(
 
 				// check auto trigger
 				if trigger == nil && !pullRequest.GetDraft() {
-					trigger = findAutoTrigger(ctx, owner, repo, ghClient, comments, pullRequest)
+					trigger = postAutoTrigger(ctx, owner, repo, ghClient, comments, pullRequest)
 				}
 
 				if trigger != nil {
@@ -186,7 +186,7 @@ func pollFunc(
 	}
 }
 
-func findAutoTrigger(
+func postAutoTrigger(
 	ctx context.Context,
 	owner string,
 	repo string,

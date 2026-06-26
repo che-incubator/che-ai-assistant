@@ -26,7 +26,8 @@ const (
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
 	WarningMarker = "<!-- che-ai-assistant:file-warning -->"
 
-	AutoTriggerMarkerFmt = "<!-- che-ai-assistant:auto-trigger:%s -->"
+	AutoTriggerMarkerPrefix = "<!-- che-ai-assistant:auto-trigger:"
+	AutoTriggerMarkerFmt    = AutoTriggerMarkerPrefix + "%s -->"
 
 	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
@@ -127,7 +128,7 @@ func BuildAutoTriggerComment(sub SubCommandType) string {
 }
 
 func IsAutoTriggerComment(body string) bool {
-	return strings.Contains(body, "<!-- che-ai-assistant:auto-trigger:")
+	return strings.Contains(body, AutoTriggerMarkerPrefix)
 }
 
 // IsCommandAvailableForRepo returns true if the subcommand is available for the given repository.
