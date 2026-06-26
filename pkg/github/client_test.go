@@ -283,11 +283,11 @@ func TestHasWarningComment(t *testing.T) {
 
 func TestHasAutoTriggerComment(t *testing.T) {
 	client := newTestClient(nil, "http://unused")
-	marker := commands.AutoTriggerMarker(commands.SubCommandTestReady)
+	marker := commands.AutoTriggerMarker(commands.SubCommandTestReadiness)
 
 	withMarker := []*gh.IssueComment{
 		{Body: gh.Ptr("regular comment")},
-		{Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandTestReady))},
+		{Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandTestReadiness))},
 	}
 	if !client.HasAutoTriggerComment(withMarker, marker) {
 		t.Error("expected auto-trigger comment to be found")

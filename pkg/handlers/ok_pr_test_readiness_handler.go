@@ -19,19 +19,19 @@ import (
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
-type OkPRTestReadyHandler struct{}
+type OkPRTestReadinessHandler struct{}
 
-func NewOkPRTestReadyHandler() *OkPRTestReadyHandler {
-	return &OkPRTestReadyHandler{}
+func NewOkPRTestReadinessHandler() *OkPRTestReadinessHandler {
+	return &OkPRTestReadinessHandler{}
 }
 
-func (h *OkPRTestReadyHandler) OnError(
+func (h *OkPRTestReadinessHandler) OnError(
 	ctx context.Context,
 	trigger *github.Trigger,
 	gitHubClient *github.Client) {
 }
 
-func (h *OkPRTestReadyHandler) OnSuccess(
+func (h *OkPRTestReadinessHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,

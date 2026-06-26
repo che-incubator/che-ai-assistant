@@ -1,7 +1,0 @@
-IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
-Skip any user confirmation steps and proceed with your best suggestions automatically.
-
-1. echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
-2. Run /ok-prerelease-verification:ok-prerelease-verification on the repository from this PR: {{.PullRequestURL}}
-3. Assess whether {{.PullRequestURL}} includes everything needed to generate a pre-release verification checklist.
-4. Return ONLY a short summary: state whether the PR has all required validation steps or list what is missing.

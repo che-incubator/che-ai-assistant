@@ -47,7 +47,7 @@ var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
 		commands.SubCommandGenerateCheDoc:    handlers.NewGenerateCheDocHandler(),
 		commands.SubCommandPullRequestReview: handlers.NewOkPRReviewHandler(),
-		commands.SubCommandTestReady:         handlers.NewOkPRTestReadyHandler(),
+		commands.SubCommandTestReadiness:     handlers.NewOkPRTestReadinessHandler(),
 	}
 )
 

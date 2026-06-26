@@ -31,7 +31,7 @@ const (
 
 	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
-	SubCommandTestReady         SubCommandType = "ok-pr-test-ready"
+	SubCommandTestReadiness     SubCommandType = "ok-pr-test-readiness"
 	SubCommandHelp              SubCommandType = "help"
 )
 
@@ -55,7 +55,7 @@ var (
 			Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)",
 		},
 		{
-			Type:         SubCommandTestReady,
+			Type:         SubCommandTestReadiness,
 			Description:  "Ensure PR has validation steps",
 			AllowedRepos: []string{"devfile/devworkspace-operator"},
 			AutoTrigger:  true,
