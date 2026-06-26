@@ -79,8 +79,8 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 	if trigger.CommentBody != "/che-ai-assistant generate-che-doc" {
 		t.Errorf("expected comment body preserved, got %q", trigger.CommentBody)
 	}
-	if trigger.SubCommand != commands.SubCommandGenerateCheDoc {
-		t.Errorf("expected generate-che-doc command, got %q", trigger.SubCommand)
+	if trigger.SubCommandType != commands.SubCommandGenerateCheDoc {
+		t.Errorf("expected generate-che-doc command, got %q", trigger.SubCommandType)
 	}
 }
 
@@ -112,8 +112,8 @@ func TestFindTriggerComment_ParsesSubcommand(t *testing.T) {
 	if trigger == nil {
 		t.Fatal("expected a trigger, got nil")
 	}
-	if trigger.SubCommand != commands.SubCommandHelp {
-		t.Errorf("expected help command, got %q", trigger.SubCommand)
+	if trigger.SubCommandType != commands.SubCommandHelp {
+		t.Errorf("expected help command, got %q", trigger.SubCommandType)
 	}
 }
 
@@ -193,7 +193,7 @@ func TestHasBotComment(t *testing.T) {
 
 	withMarker := []*gh.IssueComment{
 		{Body: gh.Ptr("regular comment")},
-		{Body: gh.Ptr(commands.BuildWelcomeMessage())},
+		{Body: gh.Ptr(commands.BuildWelcomeMessage("test-org/test-repo"))},
 	}
 	if !client.HasWelcomeComment(withMarker) {
 		t.Error("expected bot comment to be found")
@@ -278,6 +278,161 @@ func TestHasWarningComment(t *testing.T) {
 	}
 	if client.HasWarningComment(withoutMarker) {
 		t.Error("expected no warning comment")
+	}
+}
+
+func TestHasAutoTriggerComment(t *testing.T) {
+	client := newTestClient(nil, "http://unused")
+	marker := commands.AutoTriggerMarker(commands.SubCommandTestReady)
+
+	withMarker := []*gh.IssueComment{
+		{Body: gh.Ptr("regular comment")},
+		{Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandTestReady))},
+	}
+	if !client.HasAutoTriggerComment(withMarker, marker) {
+		t.Error("expected auto-trigger comment to be found")
+	}
+
+	withoutMarker := []*gh.IssueComment{
+		{Body: gh.Ptr("regular comment")},
+	}
+	if client.HasAutoTriggerComment(withoutMarker, marker) {
+		t.Error("expected no auto-trigger comment")
+	}
+}
+
+func TestAreCheckRunsPassed_AllSuccess(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+			Total: gh.Ptr(2),
+			CheckRuns: []*gh.CheckRun{
+				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
+				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient(nil, srv.URL)
+	passed, err := client.AreCheckRunsPassed(context.Background(), "org", "repo", "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !passed {
+		t.Error("expected checks to pass")
+	}
+}
+
+func TestAreCheckRunsPassed_SomePending(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+			Total: gh.Ptr(2),
+			CheckRuns: []*gh.CheckRun{
+				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
+				{Status: gh.Ptr("in_progress"), Conclusion: nil},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient(nil, srv.URL)
+	passed, err := client.AreCheckRunsPassed(context.Background(), "org", "repo", "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if passed {
+		t.Error("expected checks not to pass when some are pending")
+	}
+}
+
+func TestAreCheckRunsPassed_SomeFailed(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+			Total: gh.Ptr(2),
+			CheckRuns: []*gh.CheckRun{
+				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
+				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("failure")},
+			},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient(nil, srv.URL)
+	passed, err := client.AreCheckRunsPassed(context.Background(), "org", "repo", "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if passed {
+		t.Error("expected checks not to pass when some failed")
+	}
+}
+
+func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+			Total:     gh.Ptr(0),
+			CheckRuns: []*gh.CheckRun{},
+		})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient(nil, srv.URL)
+	passed, err := client.AreCheckRunsPassed(context.Background(), "org", "repo", "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if passed {
+		t.Error("expected checks not to pass when there are no check runs")
+	}
+}
+
+func TestFindTriggerComment_PicksUpAutoTriggerComment(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/org/repo/issues/comments/300/reactions", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode([]*gh.Reaction{})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	pr := &gh.PullRequest{
+		Number:  gh.Ptr(1),
+		HTMLURL: gh.Ptr("https://github.com/org/repo/pull/1"),
+	}
+	comments := []*gh.IssueComment{
+		{
+			ID:   gh.Ptr(int64(300)),
+			Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandTestReady)),
+			User: &gh.User{Login: gh.Ptr("bot-user")},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger == nil {
+		t.Fatal("expected auto-trigger comment to be picked up, got nil")
+	}
+	if trigger.SubCommandType != commands.SubCommandTestReady {
+		t.Errorf("expected ok-pr-test-ready command, got %q", trigger.SubCommandType)
+	}
+	if trigger.CommentID != 300 {
+		t.Errorf("expected comment ID 300, got %d", trigger.CommentID)
 	}
 }
 

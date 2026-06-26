@@ -30,7 +30,7 @@ type Trigger struct {
 	PullRequestURL string
 	CommentID      int64
 	CommentBody    string
-	SubCommand     commands.SubCommandType
+	SubCommandType commands.SubCommandType
 }
 
 type Client struct {
@@ -67,6 +67,10 @@ func (g *Client) FindTriggerComment(
 			continue
 		}
 
+		if commands.IsAutoTriggerComment(comment.GetBody()) {
+			continue
+		}
+
 		if !g.IsIssueCommentAuthorEligible(comment) {
 			continue
 		}
@@ -88,7 +92,7 @@ func (g *Client) FindTriggerComment(
 			PRNumber:       pullRequest.GetNumber(),
 			PullRequestURL: pullRequest.GetHTMLURL(),
 			CommentBody:    comment.GetBody(),
-			SubCommand:     subCommand,
+			SubCommandType: subCommand,
 		}, nil
 	}
 
@@ -163,7 +167,7 @@ func (g *Client) PostWelcomeComment(
 		owner,
 		repo,
 		pullRequest.GetNumber(),
-		commands.BuildWelcomeMessage(),
+		commands.BuildWelcomeMessage(owner+"/"+repo),
 	)
 }
 
@@ -187,6 +191,47 @@ func (g *Client) HasWarningComment(comments []*github.IssueComment) bool {
 	})
 }
 
+func (g *Client) HasAutoTriggerComment(comments []*github.IssueComment, marker string) bool {
+	return slices.ContainsFunc(comments, func(c *github.IssueComment) bool {
+		return strings.Contains(c.GetBody(), marker)
+	})
+}
+
+func (g *Client) AreCheckRunsPassed(
+	ctx context.Context,
+	owner, repo, ref string,
+) (bool, error) {
+	opts := &github.ListCheckRunsOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+
+	var allRuns []*github.CheckRun
+	for {
+		result, resp, err := g.client.Checks.ListCheckRunsForRef(ctx, owner, repo, ref, opts)
+		if err != nil {
+			return false, err
+		}
+
+		allRuns = append(allRuns, result.CheckRuns...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	if len(allRuns) == 0 {
+		return false, nil
+	}
+
+	for _, run := range allRuns {
+		if run.GetStatus() != "completed" || run.GetConclusion() != "success" {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 func (g *Client) PostPullRequestComment(
 	ctx context.Context,
 	owner, repo string,
@@ -204,6 +249,25 @@ func (g *Client) PostPullRequestComment(
 	)
 
 	return err
+}
+
+func (g *Client) PostAutoTriggerComment(
+	ctx context.Context,
+	owner, repo string,
+	pullRequestNumber int,
+	body string,
+) (*github.IssueComment, error) {
+	comment, _, err := g.client.Issues.CreateComment(
+		ctx,
+		owner,
+		repo,
+		pullRequestNumber,
+		&github.IssueComment{
+			Body: github.Ptr(body),
+		},
+	)
+
+	return comment, err
 }
 
 func (g *Client) UpdatePullRequestComment(

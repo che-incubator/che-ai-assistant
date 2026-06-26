@@ -12,7 +12,9 @@
 package commands
 
 import (
+	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -24,27 +26,47 @@ const (
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
 	WarningMarker = "<!-- che-ai-assistant:file-warning -->"
 
+	AutoTriggerMarkerFmt = "<!-- che-ai-assistant:auto-trigger:%s -->"
+
 	SubCommandGenerateCheDoc    SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview SubCommandType = "ok-pr-review"
+	SubCommandTestReady         SubCommandType = "ok-pr-test-ready"
 	SubCommandHelp              SubCommandType = "help"
 )
 
 type SubCommand struct {
-	Type        SubCommandType
-	Description string
+	Type         SubCommandType
+	Description  string
+	AllowedRepos []string
+	AutoTrigger  bool
 }
 
 var (
 	parsePattern = regexp.MustCompile(`^\s*` + regexp.QuoteMeta(Command) + `(?:\s+(\S+))?(?:\s|$)`)
 
 	SubCommands = []SubCommand{
-		{Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
-		{Type: SubCommandPullRequestReview, Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)"},
-		{Type: SubCommandHelp, Description: "Show this help message"},
+		{
+			Type:        SubCommandGenerateCheDoc,
+			Description: "Generate a documentation PR based on this PR's changes",
+		},
+		{
+			Type:        SubCommandPullRequestReview,
+			Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)",
+		},
+		{
+			Type:         SubCommandTestReady,
+			Description:  "Ensure PR has validation steps",
+			AllowedRepos: []string{"devfile/devworkspace-operator"},
+			AutoTrigger:  true,
+		},
+		{
+			Type:        SubCommandHelp,
+			Description: "Show this help message",
+		},
 	}
 )
 
-func BuildWelcomeMessage() string {
+func BuildWelcomeMessage(repoFullName string) string {
 	var b strings.Builder
 
 	b.WriteString(WelcomeMarker)
@@ -53,6 +75,9 @@ func BuildWelcomeMessage() string {
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
+		if len(subCommand.AllowedRepos) > 0 && !slices.Contains(subCommand.AllowedRepos, repoFullName) {
+			continue
+		}
 		b.WriteString("- `" + Command + " " + string(subCommand.Type) + "` — " + subCommand.Description + "\n")
 	}
 
@@ -91,4 +116,28 @@ func Parse(body string) (bool, SubCommandType) {
 	}
 
 	return true, SubCommandType(sub)
+}
+
+func AutoTriggerMarker(sub SubCommandType) string {
+	return fmt.Sprintf(AutoTriggerMarkerFmt, sub)
+}
+
+func BuildAutoTriggerComment(sub SubCommandType) string {
+	return fmt.Sprintf("%s %s\n%s", Command, sub, AutoTriggerMarker(sub))
+}
+
+func IsAutoTriggerComment(body string) bool {
+	return strings.Contains(body, "<!-- che-ai-assistant:auto-trigger:")
+}
+
+// IsCommandAvailableForRepo returns true if the subcommand is available for the given repository.
+// Commands with an empty AllowedRepos list are available for all repositories.
+// Commands with a non-empty AllowedRepos list are only available for repositories in that list.
+func IsCommandAvailableForRepo(sub SubCommandType, repoFullName string) bool {
+	for _, sc := range SubCommands {
+		if sc.Type == sub {
+			return len(sc.AllowedRepos) == 0 || slices.Contains(sc.AllowedRepos, repoFullName)
+		}
+	}
+	return true
 }

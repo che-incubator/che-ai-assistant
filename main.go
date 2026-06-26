@@ -154,27 +154,79 @@ func pollFunc(
 					continue
 				}
 
+				// check auto trigger
 				if trigger == nil {
-					continue
-				}
+					repoFullName := owner + "/" + repo
+					for _, subCommand := range commands.SubCommands {
+						if !subCommand.AutoTrigger {
+							continue
+						}
 
-				err = ghClient.AddIssueCommentEyesReaction(ctx, owner, repo, trigger.CommentID)
-				if err != nil {
-					log.Printf("[ERROR] failed to add :eyes: reaction: %v, on owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
-					continue
-				}
+						if !commands.IsCommandAvailableForRepo(subCommand.Type, repoFullName) {
+							continue
+						}
 
-				wg.Add(1)
-				go func(trigger *github.Trigger) {
-					defer wg.Done()
-					select {
-					case sem <- struct{}{}:
-						defer func() { <-sem }()
-					case <-ctx.Done():
-						return
+						if pullRequest.GetDraft() {
+							continue
+						}
+
+						marker := commands.AutoTriggerMarker(subCommand.Type)
+						if ghClient.HasAutoTriggerComment(comments, marker) {
+							continue
+						}
+
+						passed, err := ghClient.AreCheckRunsPassed(ctx, owner, repo, pullRequest.GetHead().GetSHA())
+						if err != nil {
+							log.Printf("[ERROR] failed to check CI status: %v, owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+							continue
+						}
+						if !passed {
+							continue
+						}
+
+						log.Printf("[INFO] auto-triggering %s on %s/%s#%d", subCommand.Type, owner, repo, pullRequest.GetNumber())
+
+						comment, err := ghClient.PostAutoTriggerComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildAutoTriggerComment(subCommand.Type))
+						if err != nil {
+							log.Printf("[ERROR] failed to post auto-trigger comment: %v, owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+							continue
+						}
+
+						trigger = &github.Trigger{
+							Owner:          owner,
+							Repo:           repo,
+							CommentID:      comment.GetID(),
+							PRNumber:       pullRequest.GetNumber(),
+							PullRequestURL: pullRequest.GetHTMLURL(),
+							CommentBody:    comment.GetBody(),
+							SubCommandType: subCommand.Type,
+						}
+
+						break
 					}
-					processor.Trigger(ctx, trigger)
-				}(trigger)
+				}
+
+				if trigger != nil {
+					err = ghClient.AddIssueCommentEyesReaction(ctx, owner, repo, trigger.CommentID)
+					if err != nil {
+						log.Printf("[ERROR] failed to add :eyes: reaction: %v, on owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+						continue
+					}
+
+					wg.Add(1)
+					go func(trigger *github.Trigger) {
+						defer wg.Done()
+						select {
+						case sem <- struct{}{}:
+							defer func() { <-sem }()
+						case <-ctx.Done():
+							return
+						}
+						processor.Trigger(ctx, trigger)
+					}(trigger)
+
+					continue
+				}
 			}
 		}
 	}
