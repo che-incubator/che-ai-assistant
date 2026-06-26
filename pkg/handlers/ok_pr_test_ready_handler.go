@@ -37,8 +37,7 @@ func (h *OkPRTestReadyHandler) OnSuccess(
 	trigger *github.Trigger,
 	gitHubClient *github.Client,
 ) {
-
-	body := fmt.Sprintf("## PR Validation Steps Review\n\n%s", result)
+	body := fmt.Sprintf("%s\n\nReview is complete. Please check the review comments below.", trigger.CommentBody)
 
 	if err := gitHubClient.UpdatePullRequestComment(
 		ctx,
@@ -48,7 +47,7 @@ func (h *OkPRTestReadyHandler) OnSuccess(
 		body,
 	); err != nil {
 		log.Printf(
-			"[ERROR] Failed to post result comment on %s/%s#%d: %v",
+			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
 			trigger.PRNumber,
