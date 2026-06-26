@@ -75,6 +75,7 @@ func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 		p.HandleHelp(ctx, trigger)
 	default:
 		if !commands.IsCommandAvailableForRepo(trigger.SubCommandType, trigger.Owner+"/"+trigger.Repo) {
+			p.HandleUnavailable(ctx, trigger)
 			return
 		}
 
@@ -247,6 +248,10 @@ func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger)
 
 func (p *TaskProcessor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
 	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
+}
+
+func (p *TaskProcessor) HandleUnavailable(_ context.Context, trigger *github.Trigger) {
+	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {

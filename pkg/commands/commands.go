@@ -139,5 +139,6 @@ func IsCommandAvailableForRepo(sub SubCommandType, repoFullName string) bool {
 			return len(sc.AllowedRepos) == 0 || slices.Contains(sc.AllowedRepos, repoFullName)
 		}
 	}
-	return true
+
+	return false
 }

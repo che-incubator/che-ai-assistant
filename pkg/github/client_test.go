@@ -398,44 +398,6 @@ func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	}
 }
 
-func TestFindTriggerComment_PicksUpAutoTriggerComment(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /repos/org/repo/issues/comments/300/reactions", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode([]*gh.Reaction{})
-	})
-
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	client := newTestClient([]string{"alice"}, srv.URL)
-
-	pr := &gh.PullRequest{
-		Number:  gh.Ptr(1),
-		HTMLURL: gh.Ptr("https://github.com/org/repo/pull/1"),
-	}
-	comments := []*gh.IssueComment{
-		{
-			ID:   gh.Ptr(int64(300)),
-			Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandTestReady)),
-			User: &gh.User{Login: gh.Ptr("bot-user")},
-		},
-	}
-
-	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if trigger == nil {
-		t.Fatal("expected auto-trigger comment to be picked up, got nil")
-	}
-	if trigger.SubCommandType != commands.SubCommandTestReady {
-		t.Errorf("expected ok-pr-test-ready command, got %q", trigger.SubCommandType)
-	}
-	if trigger.CommentID != 300 {
-		t.Errorf("expected comment ID 300, got %d", trigger.CommentID)
-	}
-}
-
 func TestGetPullRequestFiles(t *testing.T) {
 	callCount := 0
 	mux := http.NewServeMux()

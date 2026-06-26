@@ -224,7 +224,12 @@ func (g *Client) AreCheckRunsPassed(
 	}
 
 	for _, run := range allRuns {
-		if run.GetStatus() != "completed" || run.GetConclusion() != "success" {
+		if run.GetStatus() != "completed" {
+			return false, nil
+		}
+
+		conclusion := run.GetConclusion()
+		if conclusion != "success" && conclusion != "neutral" && conclusion != "skipped" {
 			return false, nil
 		}
 	}
