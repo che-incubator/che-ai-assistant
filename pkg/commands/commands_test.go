@@ -66,3 +66,74 @@ func TestBuildWarningMessage_SingleFile(t *testing.T) {
 	assert.Contains(t, msg, WarningMarker)
 	assert.Contains(t, msg, ".idea/workspace.xml")
 }
+
+func TestIsCommandAvailableForRepo(t *testing.T) {
+	tests := []struct {
+		name     string
+		sub      SubCommandType
+		repo     string
+		expected bool
+	}{
+		{
+			name:     "unrestricted command available for any repo",
+			sub:      SubCommandGenerateCheDoc,
+			repo:     "some-org/some-repo",
+			expected: true,
+		},
+		{
+			name:     "restricted command available for allowed repo",
+			sub:      SubCommandTestReady,
+			repo:     "devfile/devworkspace-operator",
+			expected: true,
+		},
+		{
+			name:     "restricted command unavailable for other repo",
+			sub:      SubCommandTestReady,
+			repo:     "eclipse-che/che-dashboard",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsCommandAvailableForRepo(tt.sub, tt.repo)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
+	msg := BuildWelcomeMessage("devfile/devworkspace-operator")
+
+	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
+	assert.Contains(t, msg, string(SubCommandPullRequestReview))
+	assert.Contains(t, msg, string(SubCommandHelp))
+	assert.Contains(t, msg, string(SubCommandTestReady))
+}
+
+func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
+	msg := BuildWelcomeMessage("eclipse-che/che-dashboard")
+
+	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
+	assert.Contains(t, msg, string(SubCommandPullRequestReview))
+	assert.Contains(t, msg, string(SubCommandHelp))
+	assert.NotContains(t, msg, string(SubCommandTestReady))
+}
+
+func TestAutoTriggerMarker(t *testing.T) {
+	marker := AutoTriggerMarker(SubCommandTestReady)
+	assert.Equal(t, "<!-- che-ai-assistant:auto-trigger:ok-pr-test-ready -->", marker)
+}
+
+func TestBuildAutoTriggerComment_IsParseable(t *testing.T) {
+	body := BuildAutoTriggerComment(SubCommandTestReady)
+	ok, sub := Parse(body)
+	assert.True(t, ok)
+	assert.Equal(t, SubCommandTestReady, sub)
+}
+
+func TestIsAutoTriggerComment(t *testing.T) {
+	assert.True(t, IsAutoTriggerComment(BuildAutoTriggerComment(SubCommandTestReady)))
+	assert.False(t, IsAutoTriggerComment("/che-ai-assistant ok-pr-test-ready"))
+	assert.False(t, IsAutoTriggerComment("just a regular comment"))
+}

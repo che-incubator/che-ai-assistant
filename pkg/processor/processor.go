@@ -47,6 +47,7 @@ var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
 		commands.SubCommandGenerateCheDoc:    handlers.NewGenerateCheDocHandler(),
 		commands.SubCommandPullRequestReview: handlers.NewOkPRReviewHandler(),
+		commands.SubCommandTestReady:         handlers.NewOkPRTestReadyHandler(),
 	}
 )
 
@@ -67,13 +68,18 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 }
 
 func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
-	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
 
-	switch trigger.SubCommand {
+	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
 		p.HandleHelp(ctx, trigger)
 	default:
-		handler := commandHandlers[trigger.SubCommand]
+		if !commands.IsCommandAvailableForRepo(trigger.SubCommandType, trigger.Owner+"/"+trigger.Repo) {
+			p.HandleUnavailable(ctx, trigger)
+			return
+		}
+
+		handler := commandHandlers[trigger.SubCommandType]
 		if handler == nil {
 			p.HandleUnknown(ctx, trigger)
 			return
@@ -91,7 +97,7 @@ func (p *TaskProcessor) handle(
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
 		devWorkspaceNamePrefix,
-		trigger.SubCommand,
+		trigger.SubCommandType,
 		trigger.Repo,
 		trigger.PRNumber,
 	)
@@ -161,7 +167,7 @@ func (p *TaskProcessor) OnSuccess(
 
 	log.Printf(
 		"[INFO] %s completed for %s/%s#%d, see https://github.com/%s/%s/pull/%d#issuecomment-%d, output %s",
-		trigger.SubCommand,
+		trigger.SubCommandType,
 		trigger.Owner,
 		trigger.Repo,
 		trigger.PRNumber,
@@ -189,7 +195,7 @@ func (p *TaskProcessor) onError(
 ) {
 	log.Printf(
 		"[ERROR] %s failed for %s/%s#%d: %v",
-		trigger.SubCommand,
+		trigger.SubCommandType,
 		trigger.Owner,
 		trigger.Repo,
 		trigger.PRNumber,
@@ -226,7 +232,7 @@ func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger)
 		trigger.Owner,
 		trigger.Repo,
 		trigger.PRNumber,
-		commands.BuildWelcomeMessage(),
+		commands.BuildWelcomeMessage(trigger.Owner+"/"+trigger.Repo),
 	)
 
 	if err != nil {
@@ -241,13 +247,17 @@ func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger)
 }
 
 func (p *TaskProcessor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
-	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommand, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
+}
+
+func (p *TaskProcessor) HandleUnavailable(_ context.Context, trigger *github.Trigger) {
+	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
-	commandTemplateContent, ok := p.commandTemplates[trigger.SubCommand]
+	commandTemplateContent, ok := p.commandTemplates[trigger.SubCommandType]
 	if !ok {
-		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommand)
+		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommandType)
 	}
 
 	commandTemplate, err := template.New("prompt").Parse(commandTemplateContent)
