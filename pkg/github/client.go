@@ -67,10 +67,6 @@ func (g *Client) FindTriggerComment(
 			continue
 		}
 
-		if commands.IsAutoTriggerComment(comment.GetBody()) {
-			continue
-		}
-
 		if !g.IsIssueCommentAuthorEligible(comment) {
 			continue
 		}
