@@ -30,6 +30,7 @@ func TestParse(t *testing.T) {
 		{"/che-ai-assistant generate-che-doc\nsome text", true, SubCommandGenerateCheDoc},
 		{"/che-ai-assistant help", true, SubCommandHelp},
 		{"please /che-ai-assistant help thanks", false, ""},
+		{"/che-ai-assistant check-pr-test-failures", true, SubCommandCheckPRTestFailures},
 		{"/che-ai-assistant   generate-che-doc    ", true, SubCommandGenerateCheDoc},
 		{"\n   /che-ai-assistant generate-che-doc", true, SubCommandGenerateCheDoc},
 		{"/che-ai-assistant", true, SubCommandHelp},
@@ -109,6 +110,7 @@ func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
 	assert.Contains(t, msg, string(SubCommandHelp))
 	assert.Contains(t, msg, string(SubCommandPullRequestReadiness))
+	assert.Contains(t, msg, string(SubCommandCheckPRTestFailures))
 }
 
 func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
@@ -117,6 +119,7 @@ func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
 	assert.Contains(t, msg, string(SubCommandHelp))
+	assert.Contains(t, msg, string(SubCommandCheckPRTestFailures))
 	assert.NotContains(t, msg, string(SubCommandPullRequestReadiness))
 }
 
