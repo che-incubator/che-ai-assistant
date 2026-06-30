@@ -48,6 +48,7 @@ var (
 		commands.SubCommandGenerateCheDoc:       handlers.NewGenerateCheDocHandler(),
 		commands.SubCommandPullRequestReview:    handlers.NewOkPRReviewHandler(),
 		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
+		commands.SubCommandCheckPRTestFailures:  handlers.NewCheckPRTestFailuresHandler(),
 	}
 )
 

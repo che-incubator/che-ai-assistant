@@ -32,6 +32,7 @@ const (
 	SubCommandGenerateCheDoc       SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
+	SubCommandCheckPRTestFailures  SubCommandType = "check-pr-test-failures"
 	SubCommandHelp                 SubCommandType = "help"
 )
 
@@ -59,6 +60,10 @@ var (
 			Description:  "Ensure PR has validation steps",
 			AllowedRepos: []string{"devfile/devworkspace-operator"},
 			AutoTrigger:  true,
+		},
+		{
+			Type:        SubCommandCheckPRTestFailures,
+			Description: "Analyze failing CI checks, identify root causes, and suggest fixes",
 		},
 		{
 			Type:        SubCommandHelp,
