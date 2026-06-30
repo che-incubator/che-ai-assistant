@@ -1,7 +1,7 @@
 IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
 Skip any user confirmation steps and proceed with your best suggestions automatically.
 
-1. echo $CHE_AI_ASSISTANT_OK_PR_REVIEW_GITHUB_TOKEN | gh auth login --with-token
+1. echo $CHE_AI_ASSISTANT_GITHUB_TOKEN | gh auth login --with-token
 2. Run /ok-pr-review:learn-repo on the repository from this PR: {{.PullRequestURL}}
 3. Run each of the following skills on this PR: {{.PullRequestURL}}
    Skills to run in order:
