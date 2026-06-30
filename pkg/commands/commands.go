@@ -30,6 +30,7 @@ const (
 	AutoTriggerMarkerFmt    = AutoTriggerMarkerPrefix + "%s -->"
 
 	SubCommandGenerateCheDoc       SubCommandType = "generate-che-doc"
+	SubCommandUpdateCheE2ETests    SubCommandType = "update-che-e2e-tests"
 	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
 	SubCommandCheckPRTestFailures  SubCommandType = "check-pr-test-failures"
@@ -50,6 +51,10 @@ var (
 		{
 			Type:        SubCommandGenerateCheDoc,
 			Description: "Generate a documentation PR based on this PR's changes",
+		},
+		{
+			Type:        SubCommandUpdateCheE2ETests,
+			Description: "Update e2e tests in eclipse-che/che based on che-dashboard PR changes",
 		},
 		{
 			Type:        SubCommandPullRequestReview,

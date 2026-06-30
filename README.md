@@ -15,6 +15,7 @@ A GitHub bot that monitors pull requests and executes AI-powered tasks triggered
 | Command | Description |
 |---------|-------------|
 | `/che-ai-assistant generate-che-doc` | Generate a documentation PR based on the PR's changes |
+| `/che-ai-assistant update-che-e2e-tests` | Update e2e tests in eclipse-che/che based on che-dashboard PR changes |
 | `/che-ai-assistant ok-pr-review` | Run a comprehensive PR review (summary, code review, deep review, impact analysis) |
 | `/che-ai-assistant help` | Show available commands |
 
@@ -47,6 +48,8 @@ All configuration is via environment variables.
 | `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates`                 | Directory containing prompt templates |
 | `CHE_AI_ASSISTANT_CLAUDE_OUTPUT_DIR` | System temp dir             | Directory for Claude output files |
 | `CHE_AI_ASSISTANT_LOG_FILE` | `/tmp/che-ai-assistant.log` | Log file path |
+| `CHE_AI_ASSISTANT_DOC_GENERATOR_GITHUB_TOKEN` | | GitHub token used inside DevWorkspaces for doc generation (needs write access to `eclipse-che/che-docs`) |
+| `CHE_AI_ASSISTANT_E2E_GITHUB_TOKEN` | | GitHub token used inside DevWorkspaces for e2e test fix generation (needs write access to `eclipse-che/che`) |
 
 ## Build and Run
 

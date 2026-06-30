@@ -46,6 +46,7 @@ const (
 var (
 	commandHandlers = map[commands.SubCommandType]handlers.Handler{
 		commands.SubCommandGenerateCheDoc:       handlers.NewGenerateCheDocHandler(),
+		commands.SubCommandUpdateCheE2ETests:    handlers.NewUpdateCheE2ETestsHandler(),
 		commands.SubCommandPullRequestReview:    handlers.NewOkPRReviewHandler(),
 		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
 		commands.SubCommandCheckPRTestFailures:  handlers.NewCheckPRTestFailuresHandler(),

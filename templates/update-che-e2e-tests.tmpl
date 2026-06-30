@@ -1,0 +1,52 @@
+You are an automated e2e test fixer. Follow these steps exactly:
+1. Using che-mcp-server, start a DevWorkspace named `{{.DevWorkspaceName}}` with 4Gi memory limit and Claude code injected.
+2. Using kubectl, update lifecycle.postStart command to add `mkdir -p /home/user/.claude && cp -r /tmp/claude/* /home/user/.claude/`
+3. In the DevWorkspace:
+      IMPORTANT: Do NOT use AskUserQuestion at any point.
+      Skip any user confirmation steps and proceed with your best suggestions automatically.
+    - echo $CHE_AI_ASSISTANT_E2E_GITHUB_TOKEN | gh auth login --with-token
+    - Parse the dashboard PR URL: {{.PullRequestURL}}
+      Extract the owner, repo, and PR number from the URL (format: https://github.com/<owner>/<repo>/pull/<number>)
+    - Analyze the dashboard PR: {{.PullRequestURL}}
+      * Use `gh pr view <PR_NUMBER> --repo <owner>/<repo> --json files` and `gh pr diff <PR_NUMBER> --repo <owner>/<repo>` to get all changed files and their diffs
+      * Identify what UI elements, aria-labels, data-testid attributes, or selectors were changed
+      * Extract the old and new values for each changed selector
+      * Look for patterns like:
+        - aria-label changes (e.g., "Actions" → "Actions for {name}")
+        - data-testid changes
+        - CSS class changes
+        - Button text changes
+        - Any DOM selector changes
+    - Clone the eclipse-che/che repository: git clone https://github.com/eclipse-che/che.git
+    - cd into the che repository
+    - Search for e2e test files that use the old selectors:
+      * Search in tests/e2e/pageobjects/ directory
+      * Use grep to find files containing the old aria-labels, data-testids, or selectors
+      * For each file found, use Read tool to examine the locator methods
+    - For each affected e2e test file:
+      * Identify the exact locator methods that need updating (e.g., getActionsLocator, getExpandedActionsLocator)
+      * Update the locators to match the new dashboard selectors
+      * If the new selector includes dynamic values (like workspace names), ensure the locator method accepts the necessary parameters
+      * Preserve the overall structure and pattern of the existing code
+    - Create a new branch with a descriptive name (e.g., fix-e2e-actions-locator-pr-XXXX)
+    - Commit the changes with a descriptive message following the pattern:
+      "fix(e2e): update <locator-name> for <reason>
+
+      The dashboard changed <old-selector> to <new-selector> (<owner>/<repo>#<PR_NUMBER>).
+      This broke the E2E <page-object> locator. Updated <method-names> to use the new <selector-type> pattern.
+
+      Fixes https://redhat.atlassian.net/browse/<JIRA_TICKET> (if referenced in the dashboard PR)"
+    - Push the branch to eclipse-che/che repository
+    - Create a PR using `gh pr create --draft --no-fork --fill --base main`
+      * The PR title should be: "fix(e2e): update <locator> for <reason>"
+      * The PR body should explain:
+        - What changed in the dashboard PR
+        - Which e2e locators were affected
+        - How the fix addresses the breaking change
+        - Reference to the original dashboard PR
+        - Reference to any related JIRA tickets
+    - Return ONLY the created PR URL on a line by itself.
+      The URL format: https://github.com/eclipse-che/che/pull/<number>
+4. Poll for the DevWorkspace task completion at 1-minute intervals.
+If no result after 30 minutes, stop the DevWorkspace and report a timeout failure.
+5. Using che-mcp-server, delete the DevWorkspace.
