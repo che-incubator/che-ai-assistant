@@ -13,6 +13,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/tolusha/che-doc-generator/pkg/github"
@@ -36,12 +37,14 @@ func (g *CheckPRTestFailuresHandler) OnSuccess(
 	trigger *github.Trigger,
 	gitHubClient *github.Client,
 ) {
-	if err := gitHubClient.PostPullRequestComment(
+	body := fmt.Sprintf("%s\n\nReview is complete. Please check the review comments below.", trigger.CommentBody)
+
+	if err := gitHubClient.UpdatePullRequestComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
-		trigger.PRNumber,
-		result,
+		trigger.CommentID,
+		body,
 	); err != nil {
 		log.Printf(
 			"[ERROR] Failed to post on %s/%s#%d: %v",
