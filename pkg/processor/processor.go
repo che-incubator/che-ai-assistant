@@ -49,6 +49,7 @@ var (
 		commands.SubCommandPullRequestReview:    handlers.NewOkPRReviewHandler(),
 		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
 		commands.SubCommandCheckPRTestFailures:  handlers.NewCheckPRTestFailuresHandler(),
+		commands.SubCommandUpdateCheE2ETest:     handlers.NewUpdateCheE2ETestHandler(),
 	}
 )
 
