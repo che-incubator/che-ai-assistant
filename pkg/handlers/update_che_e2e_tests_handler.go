@@ -19,19 +19,19 @@ import (
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
-type UpdateCheE2ETestHandler struct{}
+type UpdateCheE2ETestsHandler struct{}
 
-func NewUpdateCheE2ETestHandler() *UpdateCheE2ETestHandler {
-	return &UpdateCheE2ETestHandler{}
+func NewUpdateCheE2ETestsHandler() *UpdateCheE2ETestsHandler {
+	return &UpdateCheE2ETestsHandler{}
 }
 
-func (g *UpdateCheE2ETestHandler) OnError(
+func (g *UpdateCheE2ETestsHandler) OnError(
 	ctx context.Context,
 	trigger *github.Trigger,
 	gitHubClient *github.Client) {
 }
 
-func (g *UpdateCheE2ETestHandler) OnSuccess(
+func (g *UpdateCheE2ETestsHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,
