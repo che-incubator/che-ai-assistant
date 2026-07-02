@@ -33,6 +33,7 @@ const (
 	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
 	SubCommandCheckPRTestFailures  SubCommandType = "check-pr-test-failures"
+	SubCommandUpdateCheE2ETest     SubCommandType = "update-che-e2e-test"
 	SubCommandHelp                 SubCommandType = "help"
 )
 
@@ -64,6 +65,10 @@ var (
 		{
 			Type:        SubCommandCheckPRTestFailures,
 			Description: "Analyze failing CI checks, identify root causes, and suggest fixes",
+		},
+		{
+			Type:        SubCommandUpdateCheE2ETest,
+			Description: "Update Eclipse Che e2e tests",
 		},
 		{
 			Type:        SubCommandHelp,
