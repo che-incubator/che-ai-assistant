@@ -39,7 +39,7 @@ func (g *OkPRReviewHandler) OnSuccess(
 ) {
 	body := fmt.Sprintf("%s\n\nReview is complete. Please check the review comments below.", trigger.CommentBody)
 
-	if err := gitHubClient.UpdatePullRequestComment(
+	if err := gitHubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -50,7 +50,7 @@ func (g *OkPRReviewHandler) OnSuccess(
 			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
-			trigger.PRNumber,
+			trigger.IssueNumber,
 			err,
 		)
 	}

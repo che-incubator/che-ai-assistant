@@ -39,7 +39,7 @@ func (g *UpdateCheE2ETestsHandler) OnSuccess(
 ) {
 	body := fmt.Sprintf("%s\n\nCommand completed. Please find the details below.", trigger.CommentBody)
 
-	if err := gitHubClient.UpdatePullRequestComment(
+	if err := gitHubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -50,7 +50,7 @@ func (g *UpdateCheE2ETestsHandler) OnSuccess(
 			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
-			trigger.PRNumber,
+			trigger.IssueNumber,
 			err,
 		)
 	}

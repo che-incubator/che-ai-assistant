@@ -50,6 +50,7 @@ var (
 		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
 		commands.SubCommandCheckPRTestFailures:  handlers.NewCheckPRTestFailuresHandler(),
 		commands.SubCommandUpdateCheE2ETests:    handlers.NewUpdateCheE2ETestsHandler(),
+		commands.SubCommandImplement:            handlers.NewImplementHandler(),
 	}
 )
 
@@ -70,7 +71,7 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 }
 
 func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
-	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 
 	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
@@ -101,7 +102,7 @@ func (p *TaskProcessor) handle(
 		devWorkspaceNamePrefix,
 		trigger.SubCommandType,
 		trigger.Repo,
-		trigger.PRNumber,
+		trigger.IssueNumber,
 	)
 
 	defer func() {
@@ -167,15 +168,20 @@ func (p *TaskProcessor) OnSuccess(
 		log.Printf("[ERROR] Failed to write Claude task output to %s: %v", outputFile, err)
 	}
 
+	var issueOrPR string
+	if trigger.IsIssue {
+		issueOrPR = "issues"
+	} else {
+		issueOrPR = "pull"
+	}
+
 	log.Printf(
-		"[INFO] %s completed for %s/%s#%d, see https://github.com/%s/%s/pull/%d#issuecomment-%d, output %s",
+		"[INFO] %s completed, see https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s",
 		trigger.SubCommandType,
 		trigger.Owner,
 		trigger.Repo,
-		trigger.PRNumber,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.PRNumber,
+		issueOrPR,
+		trigger.IssueNumber,
 		trigger.CommentID,
 		outputFile,
 	)
@@ -200,12 +206,12 @@ func (p *TaskProcessor) onError(
 		trigger.SubCommandType,
 		trigger.Owner,
 		trigger.Repo,
-		trigger.PRNumber,
+		trigger.IssueNumber,
 		err,
 	)
 
 	body := fmt.Sprintf("%s\n\nCommand failed.", trigger.CommentBody)
-	if err := p.githubClient.UpdatePullRequestComment(
+	if err := p.githubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -216,7 +222,7 @@ func (p *TaskProcessor) onError(
 			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
-			trigger.PRNumber,
+			trigger.IssueNumber,
 			err,
 		)
 	}
@@ -229,12 +235,12 @@ func (p *TaskProcessor) onError(
 }
 
 func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger) {
-	err := p.githubClient.PostPullRequestComment(
+	err := p.githubClient.PostWelcomeComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
-		trigger.PRNumber,
-		commands.BuildWelcomeMessage(trigger.Owner+"/"+trigger.Repo),
+		trigger.IsIssue,
+		trigger.IssueNumber,
 	)
 
 	if err != nil {
@@ -242,18 +248,18 @@ func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger)
 			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
-			trigger.PRNumber,
+			trigger.IssueNumber,
 			err,
 		)
 	}
 }
 
 func (p *TaskProcessor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
-	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 }
 
 func (p *TaskProcessor) HandleUnavailable(_ context.Context, trigger *github.Trigger) {
-	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.PRNumber)
+	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
@@ -269,7 +275,8 @@ func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
 
 	var prompt strings.Builder
 	data := map[string]string{
-		"PullRequestURL": trigger.PullRequestURL,
+		"PullRequestURL": trigger.IssueURL,
+		"IssueURL":       trigger.IssueURL,
 	}
 
 	if err := commandTemplate.Execute(&prompt, data); err != nil {
@@ -331,10 +338,6 @@ func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {
 		}
 
 		content := strings.TrimSpace(string(data))
-		if !strings.Contains(content, "{{.PullRequestURL}}") {
-			return nil, fmt.Errorf("template %s must contain {{.PullRequestURL}} placeholder", file.Name())
-		}
-
 		name := strings.TrimSuffix(file.Name(), ".tmpl")
 		commandsTemplates[commands.SubCommandType(name)] = content
 	}

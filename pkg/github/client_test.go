@@ -46,10 +46,6 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 
 	client := newTestClient([]string{"alice"}, srv.URL)
 
-	pr := &gh.PullRequest{
-		Number:  gh.Ptr(1),
-		HTMLURL: gh.Ptr("https://github.com/org/repo/pull/1"),
-	}
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
@@ -63,7 +59,7 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, false, 1, "https://github.com/org/repo/pull/1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,8 +69,8 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 	if trigger.CommentID != 100 {
 		t.Errorf("expected comment ID 100, got %d", trigger.CommentID)
 	}
-	if trigger.PRNumber != 1 {
-		t.Errorf("expected PR number 1, got %d", trigger.PRNumber)
+	if trigger.IssueNumber != 1 {
+		t.Errorf("expected issue number 1, got %d", trigger.IssueNumber)
 	}
 	if trigger.CommentBody != "/che-ai-assistant generate-che-doc" {
 		t.Errorf("expected comment body preserved, got %q", trigger.CommentBody)
@@ -96,7 +92,6 @@ func TestFindTriggerComment_ParsesSubcommand(t *testing.T) {
 
 	client := newTestClient([]string{"alice"}, srv.URL)
 
-	pr := &gh.PullRequest{Number: gh.Ptr(1)}
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
@@ -105,7 +100,7 @@ func TestFindTriggerComment_ParsesSubcommand(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, false, 1, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -132,7 +127,6 @@ func TestFindTriggerComment_SkipsProcessed(t *testing.T) {
 
 	client := newTestClient([]string{"alice"}, srv.URL)
 
-	pr := &gh.PullRequest{Number: gh.Ptr(1)}
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
@@ -141,7 +135,7 @@ func TestFindTriggerComment_SkipsProcessed(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, false, 1, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -156,7 +150,6 @@ func TestFindTriggerComment_SkipsUnauthorizedUser(t *testing.T) {
 
 	client := newTestClient([]string{"alice", "bob"}, srv.URL)
 
-	pr := &gh.PullRequest{Number: gh.Ptr(1)}
 	comments := []*gh.IssueComment{
 		{
 			ID:   gh.Ptr(int64(100)),
@@ -165,7 +158,7 @@ func TestFindTriggerComment_SkipsUnauthorizedUser(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, pr)
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, false, 1, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -188,12 +181,12 @@ func TestIsPullRequestAuthorEligible(t *testing.T) {
 	}
 }
 
-func TestHasBotComment(t *testing.T) {
+func TestHasWelcomeComment(t *testing.T) {
 	client := newTestClient(nil, "http://unused")
 
 	withMarker := []*gh.IssueComment{
 		{Body: gh.Ptr("regular comment")},
-		{Body: gh.Ptr(commands.BuildWelcomeMessage("test-org/test-repo"))},
+		{Body: gh.Ptr(commands.BuildPRWelcomeMessage("test-org/test-repo"))},
 	}
 	if !client.HasWelcomeComment(withMarker) {
 		t.Error("expected bot comment to be found")
@@ -225,8 +218,7 @@ func TestPostWelcomeComment(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient([]string{"alice"}, srv.URL)
-	pr := &gh.PullRequest{Number: gh.Ptr(1)}
-	err := client.PostWelcomeComment(context.Background(), "org", "repo", pr)
+	err := client.PostWelcomeComment(context.Background(), "org", "repo", false, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -235,7 +227,7 @@ func TestPostWelcomeComment(t *testing.T) {
 	}
 }
 
-func TestUpdatePullRequestComment(t *testing.T) {
+func TestUpdateComment(t *testing.T) {
 	var updated bool
 	mux := http.NewServeMux()
 
@@ -253,7 +245,7 @@ func TestUpdatePullRequestComment(t *testing.T) {
 	defer srv.Close()
 
 	client := newTestClient(nil, srv.URL)
-	err := client.UpdatePullRequestComment(context.Background(), "org", "repo", 100, "Documentation PR created: https://example.com")
+	err := client.UpdateComment(context.Background(), "org", "repo", 100, "Documentation PR created: https://example.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -395,6 +387,93 @@ func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	}
 	if passed {
 		t.Error("expected checks not to pass when there are no check runs")
+	}
+}
+
+func TestFindTriggerComment_SkipsIssueOnlyCommand(t *testing.T) {
+	srv := httptest.NewServer(http.NewServeMux())
+	defer srv.Close()
+
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	comments := []*gh.IssueComment{
+		{
+			ID:   gh.Ptr(int64(100)),
+			Body: gh.Ptr("/che-ai-assistant implement"),
+			User: &gh.User{Login: gh.Ptr("alice")},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, false, 1, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger != nil {
+		t.Fatalf("expected nil trigger (issue-only command on PR), got %+v", trigger)
+	}
+}
+
+func TestFindTriggerComment_FindsImplementForIssue(t *testing.T) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /repos/org/repo/issues/comments/100/reactions", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode([]*gh.Reaction{})
+	})
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	comments := []*gh.IssueComment{
+		{
+			ID:   gh.Ptr(int64(100)),
+			Body: gh.Ptr("/che-ai-assistant implement"),
+			User: &gh.User{Login: gh.Ptr("alice")},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, true, 42, "https://github.com/org/repo/issues/42")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger == nil {
+		t.Fatal("expected a trigger, got nil")
+	}
+	if trigger.IssueNumber != 42 {
+		t.Errorf("expected issue number 42, got %d", trigger.IssueNumber)
+	}
+	if trigger.IssueURL != "https://github.com/org/repo/issues/42" {
+		t.Errorf("expected issue URL, got %q", trigger.IssueURL)
+	}
+	if !trigger.IsIssue {
+		t.Error("expected IsIssue to be true")
+	}
+	if trigger.SubCommandType != commands.SubCommandImplement {
+		t.Errorf("expected implement command, got %q", trigger.SubCommandType)
+	}
+}
+
+func TestFindTriggerComment_SkipsPROnlyCommandForIssue(t *testing.T) {
+	srv := httptest.NewServer(http.NewServeMux())
+	defer srv.Close()
+
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	comments := []*gh.IssueComment{
+		{
+			ID:   gh.Ptr(int64(100)),
+			Body: gh.Ptr("/che-ai-assistant generate-che-doc"),
+			User: &gh.User{Login: gh.Ptr("alice")},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), "org", "repo", comments, true, 42, "https://github.com/org/repo/issues/42")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger != nil {
+		t.Fatalf("expected nil trigger (PR-only command on issue), got %+v", trigger)
 	}
 }
 

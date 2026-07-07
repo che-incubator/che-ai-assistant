@@ -34,6 +34,7 @@ const (
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
 	SubCommandCheckPRTestFailures  SubCommandType = "check-pr-test-failures"
 	SubCommandUpdateCheE2ETests    SubCommandType = "update-che-e2e-tests"
+	SubCommandImplement            SubCommandType = "implement"
 	SubCommandHelp                 SubCommandType = "help"
 )
 
@@ -42,6 +43,7 @@ type SubCommand struct {
 	Description  string
 	AllowedRepos []string
 	AutoTrigger  bool
+	IssueOnly    bool
 }
 
 var (
@@ -71,13 +73,18 @@ var (
 			Description: "Update Eclipse Che e2e tests",
 		},
 		{
+			Type:        SubCommandImplement,
+			Description: "Implement a feature or fix a bug",
+			IssueOnly:   true,
+		},
+		{
 			Type:        SubCommandHelp,
 			Description: "Show this help message",
 		},
 	}
 )
 
-func BuildWelcomeMessage(repoFullName string) string {
+func BuildPRWelcomeMessage(repoFullName string) string {
 	var b strings.Builder
 
 	b.WriteString(WelcomeMarker)
@@ -86,6 +93,30 @@ func BuildWelcomeMessage(repoFullName string) string {
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
+		if subCommand.IssueOnly {
+			continue
+		}
+		if len(subCommand.AllowedRepos) > 0 && !slices.Contains(subCommand.AllowedRepos, repoFullName) {
+			continue
+		}
+		b.WriteString("- `" + Command + " " + string(subCommand.Type) + "` — " + subCommand.Description + "\n")
+	}
+
+	return b.String()
+}
+
+func BuildIssueWelcomeMessage(repoFullName string) string {
+	var b strings.Builder
+
+	b.WriteString(WelcomeMarker)
+	b.WriteString("\n")
+	b.WriteString("Hi! I'm **che-ai-assistant** — I help with your issues.\n\n")
+	b.WriteString("**Available commands**:\n")
+
+	for _, subCommand := range SubCommands {
+		if !subCommand.IssueOnly {
+			continue
+		}
 		if len(subCommand.AllowedRepos) > 0 && !slices.Contains(subCommand.AllowedRepos, repoFullName) {
 			continue
 		}
@@ -139,6 +170,15 @@ func BuildAutoTriggerComment(sub SubCommandType) string {
 
 func IsAutoTriggerComment(body string) bool {
 	return strings.Contains(body, AutoTriggerMarkerPrefix)
+}
+
+func IsIssueOnlyCommand(sub SubCommandType) bool {
+	for _, sc := range SubCommands {
+		if sc.Type == sub {
+			return sc.IssueOnly
+		}
+	}
+	return false
 }
 
 // IsCommandAvailableForRepo returns true if the subcommand is available for the given repository.

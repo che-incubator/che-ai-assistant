@@ -19,25 +19,25 @@ import (
 	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
-type OkPRReadinessHandler struct{}
+type ImplementHandler struct{}
 
-func NewOkPRReadinessHandler() *OkPRReadinessHandler {
-	return &OkPRReadinessHandler{}
+func NewImplementHandler() *ImplementHandler {
+	return &ImplementHandler{}
 }
 
-func (h *OkPRReadinessHandler) OnError(
+func (h *ImplementHandler) OnError(
 	ctx context.Context,
 	trigger *github.Trigger,
 	gitHubClient *github.Client) {
 }
 
-func (h *OkPRReadinessHandler) OnSuccess(
+func (h *ImplementHandler) OnSuccess(
 	ctx context.Context,
 	result string,
 	trigger *github.Trigger,
 	gitHubClient *github.Client,
 ) {
-	body := fmt.Sprintf("%s\n\nReview is complete. Please check the review comments below.", trigger.CommentBody)
+	body := fmt.Sprintf("%s\n\nTask is complete.", trigger.CommentBody)
 
 	if err := gitHubClient.UpdateComment(
 		ctx,

@@ -26,8 +26,9 @@ import (
 type Trigger struct {
 	Owner          string
 	Repo           string
-	PRNumber       int
-	PullRequestURL string
+	IsIssue        bool
+	IssueNumber    int
+	IssueURL       string
 	CommentID      int64
 	CommentBody    string
 	SubCommandType commands.SubCommandType
@@ -57,7 +58,9 @@ func (g *Client) FindTriggerComment(
 	ctx context.Context,
 	owner, repo string,
 	comments []*github.IssueComment,
-	pullRequest *github.PullRequest,
+	isIssue bool,
+	issueNumber int,
+	issueURL string,
 ) (*Trigger, error) {
 	for i := len(comments) - 1; i >= 0; i-- {
 		comment := comments[i]
@@ -67,11 +70,15 @@ func (g *Client) FindTriggerComment(
 			continue
 		}
 
-		if !g.IsIssueCommentAuthorEligible(comment) {
+		if isIssue != commands.IsIssueOnlyCommand(subCommand) {
 			continue
 		}
 
-		hasEyeReaction, err := g.HasIssueCommentEyesReaction(ctx, owner, repo, comment.GetID())
+		if !g.IsCommentAuthorEligible(comment) {
+			continue
+		}
+
+		hasEyeReaction, err := g.HasCommentEyesReaction(ctx, owner, repo, comment.GetID())
 		if err != nil {
 			return nil, err
 		}
@@ -85,8 +92,9 @@ func (g *Client) FindTriggerComment(
 			Owner:          owner,
 			Repo:           repo,
 			CommentID:      comment.GetID(),
-			PRNumber:       pullRequest.GetNumber(),
-			PullRequestURL: pullRequest.GetHTMLURL(),
+			IsIssue:        isIssue,
+			IssueNumber:    issueNumber,
+			IssueURL:       issueURL,
 			CommentBody:    comment.GetBody(),
 			SubCommandType: subCommand,
 		}, nil
@@ -127,7 +135,7 @@ func (g *Client) GetPullRequests(
 func (g *Client) GetComments(
 	ctx context.Context,
 	owner, repo string,
-	pullRequestNumber int,
+	issueNumber int,
 ) ([]*github.IssueComment, error) {
 
 	var result []*github.IssueComment
@@ -137,7 +145,7 @@ func (g *Client) GetComments(
 	}
 
 	for {
-		comments, resp, err := g.client.Issues.ListComments(ctx, owner, repo, pullRequestNumber, opts)
+		comments, resp, err := g.client.Issues.ListComments(ctx, owner, repo, issueNumber, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -156,22 +164,36 @@ func (g *Client) GetComments(
 func (g *Client) PostWelcomeComment(
 	ctx context.Context,
 	owner, repo string,
-	pullRequest *github.PullRequest,
+	isIssue bool,
+	issueNumber int,
 ) error {
-	return g.PostPullRequestComment(
+	var welcomeMessage string
+	if isIssue {
+		welcomeMessage = commands.BuildIssueWelcomeMessage(owner + "/" + repo)
+	} else {
+		welcomeMessage = commands.BuildPRWelcomeMessage(owner + "/" + repo)
+	}
+
+	_, err := g.CreateComment(
 		ctx,
 		owner,
 		repo,
-		pullRequest.GetNumber(),
-		commands.BuildWelcomeMessage(owner+"/"+repo),
+		issueNumber,
+		welcomeMessage,
 	)
+
+	return err
 }
 
 func (g *Client) IsPullRequestAuthorEligible(pullRequest *github.PullRequest) bool {
 	return slices.Contains(g.allowedUsers, pullRequest.GetUser().GetLogin())
 }
 
-func (g *Client) IsIssueCommentAuthorEligible(comment *github.IssueComment) bool {
+func (g *Client) IsIssueAuthorEligible(issue *github.Issue) bool {
+	return slices.Contains(g.allowedUsers, issue.GetUser().GetLogin())
+}
+
+func (g *Client) IsCommentAuthorEligible(comment *github.IssueComment) bool {
 	return slices.Contains(g.allowedUsers, comment.GetUser().GetLogin())
 }
 
@@ -233,36 +255,17 @@ func (g *Client) AreCheckRunsPassed(
 	return true, nil
 }
 
-func (g *Client) PostPullRequestComment(
+func (g *Client) CreateComment(
 	ctx context.Context,
 	owner, repo string,
-	pullRequestNumber int,
-	body string,
-) error {
-	_, _, err := g.client.Issues.CreateComment(
-		ctx,
-		owner,
-		repo,
-		pullRequestNumber,
-		&github.IssueComment{
-			Body: github.Ptr(body),
-		},
-	)
-
-	return err
-}
-
-func (g *Client) PostAutoTriggerComment(
-	ctx context.Context,
-	owner, repo string,
-	pullRequestNumber int,
+	issueNumber int,
 	body string,
 ) (*github.IssueComment, error) {
 	comment, _, err := g.client.Issues.CreateComment(
 		ctx,
 		owner,
 		repo,
-		pullRequestNumber,
+		issueNumber,
 		&github.IssueComment{
 			Body: github.Ptr(body),
 		},
@@ -271,17 +274,17 @@ func (g *Client) PostAutoTriggerComment(
 	return comment, err
 }
 
-func (g *Client) UpdatePullRequestComment(
+func (g *Client) UpdateComment(
 	ctx context.Context,
 	owner, repo string,
-	commentID int64,
+	commentId int64,
 	body string,
 ) error {
 	_, _, err := g.client.Issues.EditComment(
 		ctx,
 		owner,
 		repo,
-		commentID,
+		commentId,
 		&github.IssueComment{
 			Body: github.Ptr(body),
 		},
@@ -290,31 +293,31 @@ func (g *Client) UpdatePullRequestComment(
 	return err
 }
 
-func (g *Client) AddIssueCommentEyesReaction(
+func (g *Client) AddCommentEyesReaction(
 	ctx context.Context,
 	owner, repo string,
-	commentID int64,
+	commentId int64,
 ) error {
 	_, _, err := g.client.Reactions.CreateIssueCommentReaction(
 		ctx,
 		owner,
 		repo,
-		commentID,
+		commentId,
 		eyesReaction,
 	)
 
 	return err
 }
 
-func (g *Client) HasIssueCommentEyesReaction(
+func (g *Client) HasCommentEyesReaction(
 	ctx context.Context,
 	owner, repo string,
-	commentID int64,
+	commentId int64,
 ) (bool, error) {
-	opts := &github.ListOptions{PerPage: 100}
+	opts := &github.ListOptions{PerPage: 10}
 
 	for {
-		reactions, resp, err := g.client.Reactions.ListIssueCommentReactions(ctx, owner, repo, commentID, opts)
+		reactions, resp, err := g.client.Reactions.ListIssueCommentReactions(ctx, owner, repo, commentId, opts)
 		if err != nil {
 			return false, err
 		}
@@ -332,6 +335,41 @@ func (g *Client) HasIssueCommentEyesReaction(
 	}
 
 	return false, nil
+}
+
+func (g *Client) GetIssuesWithLabel(
+	ctx context.Context,
+	owner, repo string,
+	label string,
+) ([]*github.Issue, error) {
+	var result []*github.Issue
+
+	opts := &github.IssueListByRepoOptions{
+		State:       "open",
+		Labels:      []string{label},
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+
+	for {
+		issues, resp, err := g.client.Issues.ListByRepo(ctx, owner, repo, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, issue := range issues {
+			if issue.PullRequestLinks == nil {
+				result = append(result, issue)
+			}
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opts.Page = resp.NextPage
+	}
+
+	return result, nil
 }
 
 func (g *Client) GetPullRequestFiles(

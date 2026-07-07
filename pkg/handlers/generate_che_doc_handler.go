@@ -51,7 +51,7 @@ func (g *GenerateCheDocHandler) OnSuccess(
 		body = fmt.Sprintf("%s\n\nCreated documentation PR: %s", trigger.CommentBody, prUrl)
 	}
 
-	if err := gitHubClient.UpdatePullRequestComment(
+	if err := gitHubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -62,7 +62,7 @@ func (g *GenerateCheDocHandler) OnSuccess(
 			"[ERROR] Failed to post on %s/%s#%d: %v",
 			trigger.Owner,
 			trigger.Repo,
-			trigger.PRNumber,
+			trigger.IssueNumber,
 			err,
 		)
 	}
