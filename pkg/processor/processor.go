@@ -22,12 +22,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/tolusha/che-doc-generator/pkg/claude"
 	"github.com/tolusha/che-doc-generator/pkg/commands"
 	"github.com/tolusha/che-doc-generator/pkg/config"
 	"github.com/tolusha/che-doc-generator/pkg/devworkspace"
 	"github.com/tolusha/che-doc-generator/pkg/github"
-	"github.com/tolusha/che-doc-generator/pkg/handlers"
 )
 
 type TaskProcessor struct {
@@ -35,23 +33,12 @@ type TaskProcessor struct {
 	devWorkspace       *devworkspace.DevWorkspace
 	commandTemplates   map[commands.SubCommandType]string
 	taskTimeout        time.Duration
-	claudeOutputDir    string
+	outputDir          string
 	deleteDevWorkspace bool
 }
 
 const (
 	devWorkspaceNamePrefix = "che-ai"
-)
-
-var (
-	commandHandlers = map[commands.SubCommandType]handlers.Handler{
-		commands.SubCommandGenerateCheDoc:       handlers.NewGenerateCheDocHandler(),
-		commands.SubCommandPullRequestReview:    handlers.NewOkPRReviewHandler(),
-		commands.SubCommandPullRequestReadiness: handlers.NewOkPRReadinessHandler(),
-		commands.SubCommandCheckPRTestFailures:  handlers.NewCheckPRTestFailuresHandler(),
-		commands.SubCommandUpdateCheE2ETests:    handlers.NewUpdateCheE2ETestsHandler(),
-		commands.SubCommandImplement:            handlers.NewImplementHandler(),
-	}
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
@@ -65,7 +52,7 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 		devWorkspace:       devworkspace.NewDevWorkspace(cfg),
 		commandTemplates:   templates,
 		taskTimeout:        cfg.TaskTimeout,
-		claudeOutputDir:    cfg.ClaudeOutputDir,
+		outputDir:          cfg.OutputDir,
 		deleteDevWorkspace: cfg.DeleteDevWorkspace,
 	}, nil
 }
@@ -73,29 +60,67 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 
+	if !commands.IsCommandAvailableForRepo(trigger.SubCommandType, trigger.Owner+"/"+trigger.Repo) {
+		p.processHandleUnavailable(ctx, trigger)
+		return
+	}
+
 	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
-		p.HandleHelp(ctx, trigger)
+		p.processHelp(ctx, trigger)
+	case commands.SubCommandImplement:
+		p.processImplement(ctx, trigger)
 	default:
-		if !commands.IsCommandAvailableForRepo(trigger.SubCommandType, trigger.Owner+"/"+trigger.Repo) {
-			p.HandleUnavailable(ctx, trigger)
-			return
-		}
-
-		handler := commandHandlers[trigger.SubCommandType]
-		if handler == nil {
-			p.HandleUnknown(ctx, trigger)
-			return
-		}
-
-		p.handle(ctx, trigger, handler)
+		p.processDefault(ctx, trigger)
 	}
 }
 
-func (p *TaskProcessor) handle(
+func (p *TaskProcessor) processImplement(
 	ctx context.Context,
 	trigger *github.Trigger,
-	handler handlers.Handler,
+) {
+	devWorkspaceName := fmt.Sprintf(
+		"%s-%s-%s-%d",
+		devWorkspaceNamePrefix,
+		trigger.SubCommandType,
+		trigger.Repo,
+		trigger.IssueNumber,
+	)
+
+	defer func() {
+		if p.deleteDevWorkspace {
+			err := p.devWorkspace.Delete(ctx, devWorkspaceName)
+			if err != nil {
+				log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+			}
+		}
+	}()
+
+	err := p.devWorkspace.StartWithRepository(ctx, devWorkspaceName, "https://github.com/akurinnoy/supervisor-terminal", "main")
+	if err != nil {
+		p.onError(ctx, devWorkspaceName, err, trigger)
+		return
+	}
+
+	command := fmt.Sprintf("cd /projects/supervisor-terminal; /start.sh --url %s --auto-approve --effort-override high", trigger.IssueURL)
+	err = p.devWorkspace.Exec(ctx, devWorkspaceName, command)
+	if err != nil {
+		p.onError(ctx, devWorkspaceName, err, trigger)
+		return
+	}
+
+	err = p.devWorkspace.WaitExecFinished(ctx, devWorkspaceName)
+	if err != nil {
+		p.onError(ctx, devWorkspaceName, err, trigger)
+		return
+	}
+
+	p.OnSuccess(ctx, devWorkspaceName, trigger)
+}
+
+func (p *TaskProcessor) processDefault(
+	ctx context.Context,
+	trigger *github.Trigger,
 ) {
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
@@ -116,56 +141,49 @@ func (p *TaskProcessor) handle(
 
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
+		p.onError(ctx, devWorkspaceName, err, trigger)
 		return
 	}
 
 	err = p.devWorkspace.Start(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
+		p.onError(ctx, devWorkspaceName, err, trigger)
 		return
 	}
 
 	err = p.devWorkspace.CopyClaudeConfigInDevWorkspace(ctx, devWorkspaceName)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
+		p.onError(ctx, devWorkspaceName, err, trigger)
 		return
 	}
 
 	err = p.devWorkspace.RunClaudeTask(ctx, devWorkspaceName, task)
 	if err != nil {
-		p.onError(ctx, err, devWorkspaceName, trigger, handler)
+		p.onError(ctx, devWorkspaceName, err, trigger)
 		return
 	}
 
-	waitTaskFinishedErr := p.waitTaskFinishedInDevWorkspace(ctx, devWorkspaceName)
-
-	output, readClaudeTaskOutputErr := p.devWorkspace.ReadClaudeTaskOutput(ctx, devWorkspaceName)
-
-	if waitTaskFinishedErr != nil {
-		p.onError(ctx, waitTaskFinishedErr, devWorkspaceName, trigger, handler)
-		return
-	} else if readClaudeTaskOutputErr != nil {
-		p.onError(ctx, readClaudeTaskOutputErr, devWorkspaceName, trigger, handler)
+	err = p.devWorkspace.WaitTaskFinished(ctx, devWorkspaceName, p.taskTimeout)
+	if err != nil {
+		p.onError(ctx, devWorkspaceName, err, trigger)
 		return
 	}
 
-	p.OnSuccess(ctx, output, trigger, handler)
+	p.OnSuccess(ctx, devWorkspaceName, trigger)
 }
 
 func (p *TaskProcessor) OnSuccess(
 	ctx context.Context,
-	output string,
+	devWorkspaceName string,
 	trigger *github.Trigger,
-	handler handlers.Handler,
 ) {
-	outputFile := filepath.Join(
-		p.claudeOutputDir,
-		fmt.Sprintf("claude-%d.txt", time.Now().UnixNano()),
-	)
-
-	if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
-		log.Printf("[ERROR] Failed to write Claude task output to %s: %v", outputFile, err)
+	outputFile := filepath.Join(p.outputDir, fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
+	if output, err := p.devWorkspace.ReadWorkspaceOutput(ctx, devWorkspaceName); err != nil {
+		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
+	} else {
+		if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
+			log.Printf("[ERROR] Failed to write DevWorkspace output to %s: %v", outputFile, err)
+		}
 	}
 
 	var issueOrPR string
@@ -176,7 +194,7 @@ func (p *TaskProcessor) OnSuccess(
 	}
 
 	log.Printf(
-		"[INFO] %s completed, see https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s",
+		"[INFO] %s completed for comment https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s",
 		trigger.SubCommandType,
 		trigger.Owner,
 		trigger.Repo,
@@ -186,31 +204,7 @@ func (p *TaskProcessor) OnSuccess(
 		outputFile,
 	)
 
-	handler.OnSuccess(
-		ctx,
-		output,
-		trigger,
-		p.githubClient,
-	)
-}
-
-func (p *TaskProcessor) onError(
-	ctx context.Context,
-	err error,
-	devWorkspaceName string,
-	trigger *github.Trigger,
-	handler handlers.Handler,
-) {
-	log.Printf(
-		"[ERROR] %s failed for %s/%s#%d: %v",
-		trigger.SubCommandType,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.IssueNumber,
-		err,
-	)
-
-	body := fmt.Sprintf("%s\n\nCommand failed.", trigger.CommentBody)
+	body := fmt.Sprintf("%s\n\nTask completed.", trigger.CommentBody)
 	if err := p.githubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
@@ -226,15 +220,61 @@ func (p *TaskProcessor) onError(
 			err,
 		)
 	}
-
-	handler.OnError(
-		ctx,
-		trigger,
-		p.githubClient,
-	)
 }
 
-func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger) {
+func (p *TaskProcessor) onError(
+	ctx context.Context,
+	devWorkspaceName string,
+	err error,
+	trigger *github.Trigger,
+) {
+	outputFile := filepath.Join(p.outputDir, fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
+	if output, err := p.devWorkspace.ReadWorkspaceOutput(ctx, devWorkspaceName); err != nil {
+		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
+	} else {
+		if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
+			log.Printf("[ERROR] Failed to write DevWorkspace output to %s: %v", outputFile, err)
+		}
+	}
+
+	var issueOrPR string
+	if trigger.IsIssue {
+		issueOrPR = "issues"
+	} else {
+		issueOrPR = "pull"
+	}
+
+	log.Printf(
+		"[INFO] %s failed for comment https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s, error %v",
+		trigger.SubCommandType,
+		trigger.Owner,
+		trigger.Repo,
+		issueOrPR,
+		trigger.IssueNumber,
+		trigger.CommentID,
+		outputFile,
+		err,
+	)
+
+	body := fmt.Sprintf("%s\n\nTask failed.", trigger.CommentBody)
+	if err := p.githubClient.UpdateComment(
+		ctx,
+		trigger.Owner,
+		trigger.Repo,
+		trigger.CommentID,
+		body,
+	); err != nil {
+		log.Printf(
+			"[ERROR] Failed to post on %s/%s#%d: %v",
+			trigger.Owner,
+			trigger.Repo,
+			trigger.IssueNumber,
+			err,
+		)
+	}
+}
+
+func (p *TaskProcessor) processHelp(ctx context.Context, trigger *github.Trigger) {
 	err := p.githubClient.PostWelcomeComment(
 		ctx,
 		trigger.Owner,
@@ -254,11 +294,11 @@ func (p *TaskProcessor) HandleHelp(ctx context.Context, trigger *github.Trigger)
 	}
 }
 
-func (p *TaskProcessor) HandleUnknown(_ context.Context, trigger *github.Trigger) {
+func (p *TaskProcessor) processUnknown(_ context.Context, trigger *github.Trigger) {
 	log.Printf("[WARN] unknown command %q on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 }
 
-func (p *TaskProcessor) HandleUnavailable(_ context.Context, trigger *github.Trigger) {
+func (p *TaskProcessor) processHandleUnavailable(_ context.Context, trigger *github.Trigger) {
 	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 }
 
@@ -284,39 +324,6 @@ func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
 	}
 
 	return prompt.String(), nil
-}
-
-func (p *TaskProcessor) waitTaskFinishedInDevWorkspace(ctx context.Context, devWorkspaceName string) error {
-	ctx, cancel := context.WithTimeout(ctx, p.taskTimeout)
-	defer cancel()
-
-	start := time.Now()
-
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timed out waiting for task to finish in the DevWorkspace %s", devWorkspaceName)
-		case <-ticker.C:
-			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
-			status, err := p.devWorkspace.ReadClaudeTaskStatus(ctx, devWorkspaceName)
-			if err != nil {
-				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
-			}
-
-			switch status {
-			case claude.StatusRunning:
-				continue
-			case claude.StatusFinished:
-				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
-				return nil
-			default:
-				return fmt.Errorf("unexpected task status %s in the DevWorkspace %s", status, devWorkspaceName)
-			}
-		}
-	}
 }
 
 func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {

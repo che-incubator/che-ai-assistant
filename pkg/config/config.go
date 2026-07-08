@@ -30,8 +30,8 @@ const (
 )
 
 var (
-	defaultLogFile         = path.Join(os.TempDir(), "che-ai-pullrequest-assistant.log")
-	defaultClaudeOutputDir = os.TempDir()
+	defaultLogFile   = path.Join(os.TempDir(), "che-ai-pullrequest-assistant.log")
+	defaultOutputDir = os.TempDir()
 )
 
 type Config struct {
@@ -42,7 +42,7 @@ type Config struct {
 	TaskTimeout        time.Duration
 	MaxConcurrentTasks int
 	TemplatesDir       string
-	ClaudeOutputDir    string
+	OutputDir          string
 	LogFile            string
 	MCPServerURL       string
 	DeleteDevWorkspace bool
@@ -67,7 +67,7 @@ func Read() (*Config, error) {
 
 	templatesDir := optionalEnv("CHE_AI_ASSISTANT_TEMPLATES_DIR", defaultTemplatesDir)
 
-	claudeOutputDir := optionalEnv("CHE_AI_ASSISTANT_CLAUDE_OUTPUT_DIR", defaultClaudeOutputDir)
+	outputDir := optionalEnv("CHE_AI_ASSISTANT_OUTPUT_DIR", defaultOutputDir)
 
 	logFile := optionalEnv("CHE_AI_ASSISTANT_LOG_FILE", defaultLogFile)
 
@@ -111,7 +111,7 @@ func Read() (*Config, error) {
 		TaskTimeout:        taskTimeout,
 		MaxConcurrentTasks: maxConcurrent,
 		TemplatesDir:       templatesDir,
-		ClaudeOutputDir:    claudeOutputDir,
+		OutputDir:          outputDir,
 		GitHubAllowedUsers: splitCSV(githubAllowedUsersStr),
 		LogFile:            logFile,
 		MCPServerURL:       mcpServerURL,

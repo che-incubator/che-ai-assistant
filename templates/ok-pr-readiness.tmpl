@@ -3,6 +3,4 @@ Skip any user confirmation steps and proceed with your best suggestions automati
 
 1. echo $CHE_AI_ASSISTANT_GITHUB_TOKEN | gh auth login --with-token
 2. Run /ok-prerelease-verification:ok-pr-readiness on this PR: {{.PullRequestURL}}
-3. Post the full readiness report as a single new comment on PR {{.PullRequestURL}} using:
-   gh pr comment <NUMBER> --repo <OWNER>/<REPO> --body-file <FILE>
-   Write the report to a temporary file first, then pass it via --body-file to avoid shell escaping issues.
+3. Post the full readiness report as a single new comment on PR {{.PullRequestURL}}

@@ -26,6 +26,7 @@ import (
 const (
 	ToolCreateWorkspace   = "create_workspace"
 	ToolDeleteWorkspace   = "delete_workspace"
+	ToolExecInWorkspace   = "exec_in_workspace"
 	ToolLaunchCodingAgent = "launch_coding_agent"
 	ToolGetAgentStatus    = "get_agent_status"
 	ToolGetAgentOutput    = "get_agent_output"
@@ -86,6 +87,12 @@ type TaskStatus struct {
 type TaskOutput struct {
 	Output        string `json:"output"`
 	LinesReturned int    `json:"lines_returned"`
+}
+
+type ExecResult struct {
+	Output      string `json:"output"`
+	SessionName string `json:"session_name"`
+	Note        string `json:"note"`
 }
 
 type toolCallParams struct {

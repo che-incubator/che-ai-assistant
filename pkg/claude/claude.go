@@ -45,7 +45,7 @@ const (
 )
 
 func New(cfg *config.Config) *Claude {
-	return &Claude{outputDir: cfg.ClaudeOutputDir}
+	return &Claude{outputDir: cfg.OutputDir}
 }
 
 func (r *Claude) Run(ctx context.Context, timeout time.Duration, prompt string) (string, error) {

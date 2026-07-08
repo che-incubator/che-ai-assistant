@@ -1,21 +1,39 @@
 # che-ai-pullrequest-assistant
 
-A GitHub bot that monitors pull requests and executes AI-powered tasks triggered by PR comments. Currently supports automatic documentation generation for [Eclipse Che](https://github.com/eclipse-che) using Claude AI.
+A GitHub bot that monitors pull requests and issues, executing AI-powered tasks triggered by comments. Currently supports automatic documentation generation, PR reviews, and issue implementation for [Eclipse Che](https://github.com/eclipse-che) using Claude AI.
 
 ## How It Works
 
+### Pull Requests
+
 1. The bot polls configured GitHub repositories for open pull requests.
-2. On eligible PRs, it posts a welcome comment listing available commands.
+2. On eligible PRs, it posts a welcome comment listing available PR commands.
 3. When an allowed user comments `/che-ai-assistant <command>`, the bot picks it up on the next poll cycle.
 4. The bot marks the comment with a :eyes: reaction (to avoid reprocessing) and runs the corresponding handler.
 5. Results are posted back to the PR as a comment update.
 
+### Issues
+
+1. The bot polls for open issues labeled `che-ai-assistant`.
+2. On eligible issues, it posts a welcome comment listing available issue commands.
+3. When an allowed user comments `/che-ai-assistant <command>`, the bot picks it up on the next poll cycle.
+4. The bot marks the comment with a :eyes: reaction and runs the corresponding handler.
+
 ## Available Commands
+
+### Pull Request Commands
 
 | Command | Description |
 |---------|-------------|
 | `/che-ai-assistant generate-che-doc` | Generate a documentation PR based on the PR's changes |
 | `/che-ai-assistant ok-pr-review` | Run a comprehensive PR review (summary, code review, deep review, impact analysis) |
+| `/che-ai-assistant help` | Show available commands |
+
+### Issue Commands
+
+| Command | Description |
+|---------|-------------|
+| `/che-ai-assistant implement` | Implement a feature or fix a bug based on the issue description |
 | `/che-ai-assistant help` | Show available commands |
 
 ## Prerequisites
@@ -83,29 +101,35 @@ const (
 
 var SubCommands = []SubCommand{
     {Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
-    {Type: SubCommandMyCommand, Description: "Short description of what it does"},  // add this
+    {Type: SubCommandMyCommand, Description: "Short description of what it does", IssueOnly: true},  // add this; set IssueOnly: true for issue-only commands
     {Type: SubCommandHelp, Description: "Show this help message"},
 }
 ```
 
+Commands with `IssueOnly: true` are only available on issues (triggered via the `che-ai-assistant` label). Commands without this flag are available on pull requests only.
+
 ### 2. Create a Prompt Template
 
-Create `templates/my-command.tmpl`. The template is a Go text/template that receives `{{.PullRequestURL}}` — the HTML URL of the triggering pull request.
+Create `templates/my-command.tmpl`. The template is a Go text/template that receives the following variables:
+
+| Variable | Description |
+|----------|-------------|
+| `{{.PullRequestURL}}` | The HTML URL of the triggering pull request (same as `IssueURL`) |
+| `{{.IssueURL}}` | The HTML URL of the triggering issue or pull request |
 
 ```
 You are an automated assistant. Follow these steps exactly:
 1. ...
-2. Use information from this PR: {{.PullRequestURL}}
+2. Use information from this issue: {{.IssueURL}}
 3. ...
 ```
 
 Requirements:
-- The template **must** contain the `{{.PullRequestURL}}` placeholder (enforced at startup).
 - The filename (minus `.tmpl`) must match the `SubCommandType` constant value.
 
 ### 3. Implement the Handler
 
-Create a new file in `pkg/handlers/`, e.g. `my_command_handler.go`. 
+Create a new file in `pkg/handlers/`, e.g. `my_command_handler.go`.
 Implement the `Handler` interface.
 
 ### 4. Register the Handler
@@ -118,6 +142,8 @@ var commandHandlers = map[commands.SubCommandType]handlers.Handler{
     commands.SubCommandMyCommand:      handlers.NewMyCommandHandler(),  // add this
 }
 ```
+
+> **Note:** For issue-only commands, the bot will only pick up the command from issues labeled `che-ai-assistant`. For PR commands, the bot monitors all open pull requests from allowed users.
 
 ## License
 
