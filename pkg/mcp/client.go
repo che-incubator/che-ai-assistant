@@ -165,6 +165,30 @@ func (c *Client) CallTool(
 		return "", err
 	}
 
+	result, err := c.callToolOnce(ctx, tool, arguments)
+	if err != nil && c.isSessionNotFound(err) {
+		c.resetSession()
+		if err := c.ensureInitialized(ctx); err != nil {
+			return "", err
+		}
+		return c.callToolOnce(ctx, tool, arguments)
+	}
+	return result, err
+}
+
+func (c *Client) isSessionNotFound(err error) bool {
+	return strings.Contains(err.Error(), "Session not found")
+}
+
+func (c *Client) resetSession() {
+	c.sessionId = ""
+}
+
+func (c *Client) callToolOnce(
+	ctx context.Context,
+	tool string,
+	arguments interface{},
+) (string, error) {
 	currentId := int(c.currentId.Add(1))
 
 	rpcRequest := JsonRpcRequest{

@@ -129,6 +129,9 @@ func (dw *DevWorkspace) Exec(ctx context.Context, devWorkspaceName string, comma
 }
 
 func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName string, timeout time.Duration) error {
+	maxReadClaudeTaskStatusErrorsNumber := 3
+	readClaudeTaskStatusErrorCount := 0
+
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -145,7 +148,10 @@ func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName s
 			log.Printf("[INFO] Waiting for task to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
 			status, err := dw.ReadClaudeTaskStatus(ctx, devWorkspaceName)
 			if err != nil {
-				return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
+				readClaudeTaskStatusErrorCount++
+				if readClaudeTaskStatusErrorCount >= maxReadClaudeTaskStatusErrorsNumber {
+					return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
+				}
 			}
 
 			switch status {
@@ -180,7 +186,7 @@ func (dw *DevWorkspace) WaitExecFinished(ctx context.Context, devWorkspaceName s
 
 			if err != nil {
 				readOutputErrorsCount++
-				if readOutputErrorsCount > maxReadOutputErrorsNumber {
+				if readOutputErrorsCount >= maxReadOutputErrorsNumber {
 					return fmt.Errorf("failed to get output from the DevWorkspace %s: %w", devWorkspaceName, err)
 				}
 			}
