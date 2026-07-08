@@ -192,7 +192,8 @@ func (dw *DevWorkspace) WaitExecFinished(ctx context.Context, devWorkspaceName s
 			}
 
 			if strings.Contains(output, execFailedMarker) {
-				return fmt.Errorf("failed executing the command in the DevWorkspace %s: %w", devWorkspaceName, err)
+				log.Printf("[INFO] Task failed in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
+				return fmt.Errorf("failed executing the command in the DevWorkspace %s", devWorkspaceName)
 			}
 
 			if strings.Contains(output, execSuccessMarker) {

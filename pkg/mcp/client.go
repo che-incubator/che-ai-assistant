@@ -36,10 +36,10 @@ const (
 
 type Client struct {
 	serverUrl  string
+	mu         sync.Mutex
 	sessionId  string
 	httpClient *http.Client
 	currentId  atomic.Int32
-	initOnce   sync.Once
 }
 
 func New(serverUrl string) *Client {
@@ -101,6 +101,9 @@ type toolCallParams struct {
 }
 
 func (c *Client) ensureInitialized(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.sessionId != "" {
 		return nil
 	}
@@ -181,6 +184,8 @@ func (c *Client) isSessionNotFound(err error) bool {
 }
 
 func (c *Client) resetSession() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.sessionId = ""
 }
 
@@ -201,7 +206,11 @@ func (c *Client) callToolOnce(
 		},
 	}
 
-	httpResponse, rpcResponse, err := c.doPost(ctx, rpcRequest, c.sessionId)
+	c.mu.Lock()
+	sid := c.sessionId
+	c.mu.Unlock()
+
+	httpResponse, rpcResponse, err := c.doPost(ctx, rpcRequest, sid)
 	if err != nil {
 		return "", fmt.Errorf("failed to call MCP tools %s: %w", tool, err)
 	}
