@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 type SubCommandType string
@@ -89,12 +90,13 @@ var (
 	}
 )
 
-func BuildPRWelcomeMessage(repoFullName string) string {
+func BuildPRWelcomeMessage(repoFullName string, pollInterval time.Duration) string {
 	var b strings.Builder
 
 	b.WriteString(WelcomeMarker)
 	b.WriteString("\n")
 	b.WriteString("Hi! I'm **che-ai-assistant** — I help with your pull requests.\n\n")
+	b.WriteString("I check for new comments every **" + pollInterval.String() + "**, so there may be a short delay before I respond.\n\n")
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
@@ -110,12 +112,13 @@ func BuildPRWelcomeMessage(repoFullName string) string {
 	return b.String()
 }
 
-func BuildIssueWelcomeMessage(repoFullName string) string {
+func BuildIssueWelcomeMessage(repoFullName string, pollInterval time.Duration) string {
 	var b strings.Builder
 
 	b.WriteString(WelcomeMarker)
 	b.WriteString("\n")
 	b.WriteString("Hi! I'm **che-ai-assistant** — I help with your issues.\n\n")
+	b.WriteString("I check for new comments every **" + pollInterval.String() + "**, so there may be a short delay before I respond.\n\n")
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
