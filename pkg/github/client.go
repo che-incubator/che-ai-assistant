@@ -212,7 +212,7 @@ func (g *Client) IsCommentAuthorEligible(comment *github.IssueComment) bool {
 func isEditedComment(comment *github.IssueComment) bool {
 	created := comment.GetCreatedAt()
 	updated := comment.GetUpdatedAt()
-	return !created.Time.IsZero() && !updated.Time.IsZero() && !created.Time.Equal(updated.Time)
+	return !created.IsZero() && !updated.IsZero() && !created.Equal(updated)
 }
 
 func (g *Client) HasWelcomeComment(comments []*github.IssueComment) bool {
