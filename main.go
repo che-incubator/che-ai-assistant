@@ -12,6 +12,12 @@
 package main
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/config"
+	"che-incubator/che-ai-assistant/pkg/github"
+	"che-incubator/che-ai-assistant/pkg/processor"
+	"che-incubator/che-ai-assistant/pkg/scanner"
+	"che-incubator/che-ai-assistant/pkg/state"
 	"context"
 	"log"
 	"os"
@@ -22,12 +28,6 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v68/github"
-	"github.com/tolusha/che-doc-generator/pkg/commands"
-	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/github"
-	"github.com/tolusha/che-doc-generator/pkg/processor"
-	"github.com/tolusha/che-doc-generator/pkg/scanner"
-	"github.com/tolusha/che-doc-generator/pkg/state"
 )
 
 var (

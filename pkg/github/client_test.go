@@ -12,6 +12,7 @@
 package github
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -20,8 +21,6 @@ import (
 	"testing"
 
 	gh "github.com/google/go-github/v68/github"
-
-	"github.com/tolusha/che-doc-generator/pkg/commands"
 )
 
 func newTestClient(allowedUsers []string, baseURL string) *Client {

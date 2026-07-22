@@ -12,15 +12,14 @@
 package github
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/config"
 	"context"
 	"slices"
 	"strings"
 
 	"github.com/google/go-github/v68/github"
-	"github.com/tolusha/che-doc-generator/pkg/config"
 	"golang.org/x/oauth2"
-
-	"github.com/tolusha/che-doc-generator/pkg/commands"
 )
 
 type Trigger struct {

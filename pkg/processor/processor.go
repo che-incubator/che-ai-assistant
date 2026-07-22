@@ -12,6 +12,10 @@
 package processor
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/config"
+	"che-incubator/che-ai-assistant/pkg/devworkspace"
+	"che-incubator/che-ai-assistant/pkg/github"
 	"context"
 	"errors"
 	"fmt"
@@ -21,11 +25,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/tolusha/che-doc-generator/pkg/commands"
-	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/devworkspace"
-	"github.com/tolusha/che-doc-generator/pkg/github"
 )
 
 type TaskProcessor struct {
