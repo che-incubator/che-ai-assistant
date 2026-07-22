@@ -1,4 +1,4 @@
-BINARY_NAME := che-ai-pullrequest-assistant
+BINARY_NAME := che-ai-assistant
 
 .PHONY: build test fmt lint clean
 

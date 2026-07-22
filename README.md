@@ -1,4 +1,4 @@
-# che-ai-pullrequest-assistant
+# che-ai-assistant
 
 A GitHub bot that monitors pull requests and issues, executing AI-powered tasks triggered by comments. Currently supports automatic documentation generation, PR reviews, and issue implementation for [Eclipse Che](https://github.com/eclipse-che) using Claude AI.
 
@@ -68,7 +68,7 @@ All configuration is via environment variables.
 | `CHE_AI_ASSISTANT_MAX_CONCURRENT` | `1`                         | Maximum number of handlers running concurrently |
 | `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates`                 | Directory containing prompt templates |
 | `CHE_AI_ASSISTANT_OUTPUT_DIR` | System temp dir             | Directory for output files |
-| `CHE_AI_ASSISTANT_LOG_FILE` | `<tmp>/che-ai-pullrequest-assistant.log` | Log file path |
+| `CHE_AI_ASSISTANT_LOG_FILE` | `<tmp>/che-ai-assistant.log` | Log file path |
 | `CHE_DELETE_DEV_WORKSPACE` | `true`                      | Whether to delete DevWorkspaces after task completion |
 | `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode`           | Comma-separated directories to warn about in PR commits |
 

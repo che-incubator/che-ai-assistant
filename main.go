@@ -16,7 +16,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path"
 	"regexp"
 	"sync"
 	"syscall"
@@ -48,11 +47,7 @@ func main() {
 
 	ghClient := github.NewGitHubClient(cfg)
 
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatalf("[ERROR] Failed to get user home directory: %v", err)
-	}
-	store, err := state.NewStore(path.Join(userHome, "state.json"))
+	store, err := state.NewStore(cfg.StatePath)
 	if err != nil {
 		log.Fatalf("[ERROR] state.NewStore: %v", err)
 	}

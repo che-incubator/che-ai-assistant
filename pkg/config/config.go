@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	defaultLogFile   = path.Join(os.TempDir(), "che-ai-pullrequest-assistant.log")
+	defaultLogFile   = path.Join(os.TempDir(), "che-ai-assistant.log")
 	defaultOutputDir = os.TempDir()
 )
 
@@ -47,6 +47,7 @@ type Config struct {
 	MCPServerURL       string
 	DeleteDevWorkspace bool
 	WarnDirsCommits    []string
+	StatePath          string
 }
 
 func Read() (*Config, error) {
@@ -105,6 +106,12 @@ func Read() (*Config, error) {
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("getting user home directory: %w", err)
+	}
+	statePath := optionalEnv("CHE_AI_ASSISTANT_STATE_PATH", path.Join(userHome, "state.json"))
+
 	return &Config{
 		GitHubWatchRepos:   splitCSV(githubWatchReposStr),
 		TasksPollInterval:  tasksPollInterval,
@@ -118,6 +125,7 @@ func Read() (*Config, error) {
 		GitHubToken:        githubToken,
 		DeleteDevWorkspace: deleteDevWorkspace,
 		WarnDirsCommits:    warnDirsCommits,
+		StatePath:          statePath,
 	}, nil
 }
 
