@@ -12,6 +12,7 @@
 package github
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -20,8 +21,6 @@ import (
 	"testing"
 
 	gh "github.com/google/go-github/v68/github"
-
-	"github.com/tolusha/che-doc-generator/pkg/commands"
 )
 
 func newTestClient(allowedUsers []string, baseURL string) *Client {
@@ -38,7 +37,7 @@ func noReactionsServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/{owner}/{repo}/issues/comments/{id}/reactions", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode([]*gh.Reaction{})
+		_ = json.NewEncoder(w).Encode([]*gh.Reaction{})
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -192,11 +191,11 @@ func TestPostWelcomeComment(t *testing.T) {
 	mux.HandleFunc("POST /repos/org/repo/issues/1/comments", func(w http.ResponseWriter, r *http.Request) {
 		posted = true
 		var body gh.IssueComment
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 		if !strings.Contains(body.GetBody(), commands.WelcomeMarker) {
 			t.Error("welcome comment should contain marker")
 		}
-		json.NewEncoder(w).Encode(&gh.IssueComment{ID: gh.Ptr(int64(200))})
+		_ = json.NewEncoder(w).Encode(&gh.IssueComment{ID: gh.Ptr(int64(200))})
 	})
 
 	srv := httptest.NewServer(mux)
@@ -219,11 +218,11 @@ func TestUpdateComment(t *testing.T) {
 	mux.HandleFunc("PATCH /repos/org/repo/issues/comments/100", func(w http.ResponseWriter, r *http.Request) {
 		updated = true
 		var body gh.IssueComment
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 		if !strings.Contains(body.GetBody(), "Documentation PR created") {
 			t.Error("updated body should contain new content")
 		}
-		json.NewEncoder(w).Encode(&gh.IssueComment{ID: gh.Ptr(int64(100))})
+		_ = json.NewEncoder(w).Encode(&gh.IssueComment{ID: gh.Ptr(int64(100))})
 	})
 
 	srv := httptest.NewServer(mux)
@@ -281,7 +280,7 @@ func TestHasAutoTriggerComment(t *testing.T) {
 func TestAreCheckRunsPassed_AllSuccess(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+		_ = json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
 			Total: gh.Ptr(2),
 			CheckRuns: []*gh.CheckRun{
 				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
@@ -306,7 +305,7 @@ func TestAreCheckRunsPassed_AllSuccess(t *testing.T) {
 func TestAreCheckRunsPassed_SomePending(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+		_ = json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
 			Total: gh.Ptr(2),
 			CheckRuns: []*gh.CheckRun{
 				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
@@ -331,7 +330,7 @@ func TestAreCheckRunsPassed_SomePending(t *testing.T) {
 func TestAreCheckRunsPassed_SomeFailed(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+		_ = json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
 			Total: gh.Ptr(2),
 			CheckRuns: []*gh.CheckRun{
 				{Status: gh.Ptr("completed"), Conclusion: gh.Ptr("success")},
@@ -356,7 +355,7 @@ func TestAreCheckRunsPassed_SomeFailed(t *testing.T) {
 func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
+		_ = json.NewEncoder(w).Encode(gh.ListCheckRunsResults{
 			Total:     gh.Ptr(0),
 			CheckRuns: []*gh.CheckRun{},
 		})
@@ -458,12 +457,12 @@ func TestGetPullRequestFiles(t *testing.T) {
 
 		if page == "" || page == "1" {
 			w.Header().Set("Link", `<`+r.URL.Path+`?page=2>; rel="next"`)
-			json.NewEncoder(w).Encode([]*gh.CommitFile{
+			_ = json.NewEncoder(w).Encode([]*gh.CommitFile{
 				{Filename: gh.Ptr(".claude/settings.json")},
 				{Filename: gh.Ptr("main.go")},
 			})
 		} else {
-			json.NewEncoder(w).Encode([]*gh.CommitFile{
+			_ = json.NewEncoder(w).Encode([]*gh.CommitFile{
 				{Filename: gh.Ptr(".vscode/launch.json")},
 			})
 		}

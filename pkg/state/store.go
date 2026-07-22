@@ -25,6 +25,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -173,18 +174,26 @@ func (s *Store) save() error {
 	}
 
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
+		if cerr := tmp.Close(); cerr != nil {
+			log.Printf("[WARN] Failed to close temp file %s: %v", tmp.Name(), cerr)
+		}
+		if rerr := os.Remove(tmp.Name()); rerr != nil {
+			log.Printf("[WARN] Failed to remove temp file %s: %v", tmp.Name(), rerr)
+		}
 		return fmt.Errorf("writing temp file: %w", err)
 	}
 
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmp.Name())
+		if rerr := os.Remove(tmp.Name()); rerr != nil {
+			log.Printf("[WARN] Failed to remove temp file %s: %v", tmp.Name(), rerr)
+		}
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 
 	if err := os.Rename(tmp.Name(), s.filePath); err != nil {
-		os.Remove(tmp.Name())
+		if rerr := os.Remove(tmp.Name()); rerr != nil {
+			log.Printf("[WARN] Failed to remove temp file %s: %v", tmp.Name(), rerr)
+		}
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
 

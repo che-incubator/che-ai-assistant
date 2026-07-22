@@ -12,6 +12,8 @@
 package devworkspace
 
 import (
+	"che-incubator/che-ai-assistant/pkg/config"
+	"che-incubator/che-ai-assistant/pkg/mcp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,9 +21,6 @@ import (
 	"log"
 	"strings"
 	"time"
-
-	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/mcp"
 )
 
 type DevWorkspace struct {
@@ -267,7 +266,7 @@ func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspace
 	maxErrors := 3
 	errorCount := 0
 
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Hour)
+	ctx, cancel := context.WithTimeout(ctx, 12*time.Hour)
 	defer cancel()
 
 	start := time.Now()

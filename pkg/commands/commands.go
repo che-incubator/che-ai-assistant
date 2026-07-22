@@ -191,6 +191,15 @@ func IsIssueOnlyCommand(sub SubCommandType) bool {
 	return false
 }
 
+func IsKnownCommand(sub SubCommandType) bool {
+	for _, sc := range SubCommands {
+		if sc.Type == sub {
+			return true
+		}
+	}
+	return false
+}
+
 // IsCommandAvailableForRepo returns true if the subcommand is available for the given repository.
 // Commands with an empty AllowedRepos list are available for all repositories.
 // Commands with a non-empty AllowedRepos list are only available for repositories in that list.

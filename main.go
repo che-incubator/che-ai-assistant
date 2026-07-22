@@ -12,6 +12,12 @@
 package main
 
 import (
+	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/config"
+	"che-incubator/che-ai-assistant/pkg/github"
+	"che-incubator/che-ai-assistant/pkg/processor"
+	"che-incubator/che-ai-assistant/pkg/scanner"
+	"che-incubator/che-ai-assistant/pkg/state"
 	"context"
 	"log"
 	"os"
@@ -22,12 +28,6 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v68/github"
-	"github.com/tolusha/che-doc-generator/pkg/commands"
-	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/github"
-	"github.com/tolusha/che-doc-generator/pkg/processor"
-	"github.com/tolusha/che-doc-generator/pkg/scanner"
-	"github.com/tolusha/che-doc-generator/pkg/state"
 )
 
 var (
@@ -147,24 +147,26 @@ func pollPullRequests(
 ) {
 	pullRequests, err := ghClient.GetPullRequests(ctx, owner, repo)
 	if err != nil {
-		log.Printf("[ERROR] failed to fetch pull requests: %v, owner %s, repo %s", err, owner, repo)
+		log.Printf("[ERROR] failed to fetch pull requests: %v, https://github.com/%s/%s", err, owner, repo)
 		return
 	}
 
 	for _, pullRequest := range pullRequests {
+		prURL := pullRequest.GetHTMLURL()
+
 		comments, err := ghClient.GetComments(ctx, owner, repo, *pullRequest.Number)
 		if err != nil {
-			log.Printf("[ERROR] failed to fetch comments: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+			log.Printf("[ERROR] failed to fetch comments: %v, %s", err, prURL)
 			continue
 		}
 
 		// post welcome message
 		if ghClient.IsPullRequestAuthorEligible(pullRequest) && !ghClient.HasWelcomeComment(comments) {
-			log.Printf("[INFO] posting welcome comment on %s/%s#%d", owner, repo, pullRequest.GetNumber())
+			log.Printf("[INFO] posting welcome comment on %s", prURL)
 
 			err := ghClient.PostWelcomeComment(ctx, owner, repo, false, pullRequest.GetNumber())
 			if err != nil {
-				log.Printf("[ERROR] failed to post welcome comment: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+				log.Printf("[ERROR] failed to post welcome comment: %v, %s", err, prURL)
 			}
 		}
 
@@ -172,15 +174,15 @@ func pollPullRequests(
 		if !ghClient.HasWarningComment(comments) {
 			files, err := ghClient.GetPullRequestFiles(ctx, owner, repo, pullRequest.GetNumber())
 			if err != nil {
-				log.Printf("[ERROR] failed to fetch pull request files: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+				log.Printf("[ERROR] failed to fetch pull request files: %v, %s", err, prURL)
 			} else {
 				matched := scanner.CheckFiles(files, cfg.WarnDirsCommits)
 				if len(matched) > 0 {
-					log.Printf("[INFO] posting warning comment on %s/%s#%d for files: %v", owner, repo, pullRequest.GetNumber(), matched)
+					log.Printf("[INFO] posting warning comment on %s for files: %v", prURL, matched)
 
 					_, err := ghClient.CreateComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildWarningMessage(matched))
 					if err != nil {
-						log.Printf("[ERROR] failed to post warning comment: %v, owner %s, repo %s, pr %d", err, owner, repo, pullRequest.GetNumber())
+						log.Printf("[ERROR] failed to post warning comment: %v, %s", err, prURL)
 					}
 				}
 			}
@@ -201,7 +203,7 @@ func pollPullRequests(
 			isProcessed,
 		)
 		if err != nil {
-			log.Printf("[ERROR] failed to find trigger comment: %v, owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, prURL)
 			continue
 		}
 
@@ -212,13 +214,13 @@ func pollPullRequests(
 
 		if trigger != nil {
 			if err := store.MarkProcessed(owner, repo, pullRequest.GetNumber(), trigger.CommentID); err != nil {
-				log.Printf("[ERROR] failed to mark trigger as processed: %v, on owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+				log.Printf("[ERROR] failed to mark trigger as processed: %v, %s", err, prURL)
 				continue
 			}
 
 			err = ghClient.AddCommentEyesReaction(ctx, owner, repo, trigger.CommentID)
 			if err != nil {
-				log.Printf("[ERROR] failed to add :eyes: reaction: %v, on owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+				log.Printf("[ERROR] failed to add :eyes: reaction: %v, %s", err, prURL)
 			}
 
 			dispatchTrigger(trigger)
@@ -235,24 +237,26 @@ func pollIssues(
 ) {
 	issues, err := ghClient.GetIssuesWithLabel(ctx, owner, repo, "che-ai-assistant")
 	if err != nil {
-		log.Printf("[ERROR] failed to fetch issues: %v, owner %s, repo %s", err, owner, repo)
+		log.Printf("[ERROR] failed to fetch issues: %v, https://github.com/%s/%s", err, owner, repo)
 		return
 	}
 
 	for _, issue := range issues {
+		issueURL := issue.GetHTMLURL()
+
 		comments, err := ghClient.GetComments(ctx, owner, repo, issue.GetNumber())
 		if err != nil {
-			log.Printf("[ERROR] failed to fetch comments: %v, owner %s, repo %s, issue %d", err, owner, repo, issue.GetNumber())
+			log.Printf("[ERROR] failed to fetch comments: %v, %s", err, issueURL)
 			continue
 		}
 
 		// post welcome message for issues
 		if ghClient.IsIssueAuthorEligible(issue) && !ghClient.HasWelcomeComment(comments) {
-			log.Printf("[INFO] posting issue welcome comment on %s/%s#%d", owner, repo, issue.GetNumber())
+			log.Printf("[INFO] posting issue welcome comment on %s", issueURL)
 
 			err := ghClient.PostWelcomeComment(ctx, owner, repo, true, issue.GetNumber())
 			if err != nil {
-				log.Printf("[ERROR] failed to post issue welcome comment: %v, owner %s, repo %s, issue %d", err, owner, repo, issue.GetNumber())
+				log.Printf("[ERROR] failed to post issue welcome comment: %v, %s", err, issueURL)
 			}
 		}
 
@@ -270,10 +274,14 @@ func pollIssues(
 			repo,
 			isProcessed,
 		)
+		if err != nil {
+			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, issueURL)
+			continue
+		}
 
 		if trigger != nil {
 			if err := store.MarkProcessed(owner, repo, issue.GetNumber(), trigger.CommentID); err != nil {
-				log.Printf("[ERROR] failed to mark trigger as processed: %v, on owner: %s, repo: %s, issue: %d", err, owner, repo, issue.GetNumber())
+				log.Printf("[ERROR] failed to mark trigger as processed: %v, %s", err, issueURL)
 				continue
 			}
 
@@ -284,7 +292,7 @@ func pollIssues(
 				trigger.CommentID,
 			)
 			if err != nil {
-				log.Printf("[ERROR] failed to add :eyes: reaction: %v, on owner: %s, repo: %s, issue: %d", err, owner, repo, issue.GetNumber())
+				log.Printf("[ERROR] failed to add :eyes: reaction: %v, %s", err, issueURL)
 			}
 
 			dispatchTrigger(trigger)
@@ -315,20 +323,22 @@ func postAutoTrigger(
 			continue
 		}
 
+		prURL := pullRequest.GetHTMLURL()
+
 		passed, err := ghClient.AreCheckRunsPassed(ctx, owner, repo, pullRequest.GetHead().GetSHA())
 		if err != nil {
-			log.Printf("[ERROR] failed to check CI status: %v, owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+			log.Printf("[ERROR] failed to check CI status: %v, %s", err, prURL)
 			continue
 		}
 		if !passed {
 			continue
 		}
 
-		log.Printf("[INFO] auto-triggering %s on %s/%s#%d", subCommand.Type, owner, repo, pullRequest.GetNumber())
+		log.Printf("[INFO] auto-triggering %s on %s", subCommand.Type, prURL)
 
 		comment, err := ghClient.CreateComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildAutoTriggerComment(subCommand.Type))
 		if err != nil {
-			log.Printf("[ERROR] failed to post auto-trigger comment: %v, owner: %s, repo: %s, pr: %d", err, owner, repo, pullRequest.GetNumber())
+			log.Printf("[ERROR] failed to post auto-trigger comment: %v, %s", err, prURL)
 			continue
 		}
 
