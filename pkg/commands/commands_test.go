@@ -14,6 +14,7 @@ package commands
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -110,7 +111,7 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 }
 
 func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
-	msg := BuildPRWelcomeMessage("devfile/devworkspace-operator")
+	msg := BuildPRWelcomeMessage("devfile/devworkspace-operator", 5*time.Minute)
 
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
@@ -120,7 +121,7 @@ func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
 }
 
 func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
-	msg := BuildPRWelcomeMessage("eclipse-che/che-dashboard")
+	msg := BuildPRWelcomeMessage("eclipse-che/che-dashboard", 5*time.Minute)
 
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
@@ -130,7 +131,7 @@ func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
 }
 
 func TestBuildWelcomeMessage_HidesIssueOnlyCommands(t *testing.T) {
-	msg := BuildPRWelcomeMessage("some-org/some-repo")
+	msg := BuildPRWelcomeMessage("some-org/some-repo", 5*time.Minute)
 
 	assert.NotContains(t, msg, string(SubCommandImplement))
 }

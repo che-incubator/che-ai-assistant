@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	gh "github.com/google/go-github/v68/github"
 )
@@ -30,6 +31,7 @@ func newTestClient(allowedUsers []string, baseURL string) *Client {
 	return &Client{
 		client:       c,
 		allowedUsers: allowedUsers,
+		pollInterval: 5 * time.Minute,
 	}
 }
 
@@ -170,7 +172,7 @@ func TestHasWelcomeComment(t *testing.T) {
 
 	withMarker := []*gh.IssueComment{
 		{Body: gh.Ptr("regular comment")},
-		{Body: gh.Ptr(commands.BuildPRWelcomeMessage("test-org/test-repo"))},
+		{Body: gh.Ptr(commands.BuildPRWelcomeMessage("test-org/test-repo", 5*time.Minute))},
 	}
 	if !client.HasWelcomeComment(withMarker) {
 		t.Error("expected bot comment to be found")

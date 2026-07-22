@@ -17,6 +17,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v68/github"
 	"golang.org/x/oauth2"
@@ -38,6 +39,7 @@ type Trigger struct {
 type Client struct {
 	client       *github.Client
 	allowedUsers []string
+	pollInterval time.Duration
 }
 
 const (
@@ -52,6 +54,7 @@ func NewGitHubClient(cfg *config.Config) *Client {
 	return &Client{
 		client:       client,
 		allowedUsers: cfg.GitHubAllowedUsers,
+		pollInterval: cfg.TasksPollInterval,
 	}
 }
 
@@ -177,9 +180,9 @@ func (g *Client) PostWelcomeComment(
 ) error {
 	var welcomeMessage string
 	if isIssue {
-		welcomeMessage = commands.BuildIssueWelcomeMessage(owner + "/" + repo)
+		welcomeMessage = commands.BuildIssueWelcomeMessage(owner+"/"+repo, g.pollInterval)
 	} else {
-		welcomeMessage = commands.BuildPRWelcomeMessage(owner + "/" + repo)
+		welcomeMessage = commands.BuildPRWelcomeMessage(owner+"/"+repo, g.pollInterval)
 	}
 
 	_, err := g.CreateComment(
