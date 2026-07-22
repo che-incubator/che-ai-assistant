@@ -264,7 +264,7 @@ func pollIssues(
 			return store.IsProcessed(owner, repo, issue.GetNumber(), commentID)
 		}
 
-		trigger, _ := ghClient.FindTriggerComment(
+		trigger, err := ghClient.FindTriggerComment(
 			ctx,
 			comments,
 			true,
@@ -274,6 +274,10 @@ func pollIssues(
 			repo,
 			isProcessed,
 		)
+		if err != nil {
+			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, issueURL)
+			continue
+		}
 
 		if trigger != nil {
 			if err := store.MarkProcessed(owner, repo, issue.GetNumber(), trigger.CommentID); err != nil {

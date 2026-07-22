@@ -10,7 +10,6 @@ test:
 
 fmt:
 	gofmt -w .
-	goimports -w .
 
 lint: fmt
 	golangci-lint run ./...
