@@ -137,7 +137,7 @@ func (c *Client) ensureInitialized(ctx context.Context) error {
 			"protocolVersion": "2025-03-26",
 			"capabilities":    map[string]interface{}{},
 			"clientInfo": map[string]string{
-				"name":    "che-ai-pullrequest-assistant",
+				"name":    "che-ai-assistant",
 				"version": "1.0.0",
 			},
 		},
