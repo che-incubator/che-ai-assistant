@@ -12,6 +12,8 @@
 package devworkspace
 
 import (
+	"che-incubator/che-ai-assistant/pkg/config"
+	"che-incubator/che-ai-assistant/pkg/mcp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,9 +21,6 @@ import (
 	"log"
 	"strings"
 	"time"
-
-	"github.com/tolusha/che-doc-generator/pkg/config"
-	"github.com/tolusha/che-doc-generator/pkg/mcp"
 )
 
 type DevWorkspace struct {
