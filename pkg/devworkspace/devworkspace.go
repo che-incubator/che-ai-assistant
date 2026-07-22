@@ -267,9 +267,6 @@ func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspace
 	maxErrors := 3
 	errorCount := 0
 
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Hour)
-	defer cancel()
-
 	start := time.Now()
 
 	ticker := time.NewTicker(30 * time.Minute)

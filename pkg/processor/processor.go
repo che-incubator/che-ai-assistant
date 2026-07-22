@@ -102,8 +102,13 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	log.Printf("[INFO] Running %s for %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 
+	if !commands.IsKnownCommand(trigger.SubCommandType) {
+		p.processUnknown(ctx, trigger)
+		return
+	}
+
 	if !commands.IsCommandAvailableForRepo(trigger.SubCommandType, trigger.Owner+"/"+trigger.Repo) {
-		p.processHandleUnavailable(ctx, trigger)
+		p.processUnknown(ctx, trigger)
 		return
 	}
 
@@ -368,10 +373,6 @@ func (p *TaskProcessor) processUnknown(ctx context.Context, trigger *github.Trig
 	if err := p.githubClient.PostWelcomeComment(ctx, trigger.Owner, trigger.Repo, trigger.IsIssue, trigger.IssueNumber); err != nil {
 		log.Printf("[ERROR] failed to post welcome comment: %v, issue %s", err, trigger.IssueURL)
 	}
-}
-
-func (p *TaskProcessor) processHandleUnavailable(_ context.Context, trigger *github.Trigger) {
-	log.Printf("[WARN] command %q is unavailable on %s/%s#%d", trigger.SubCommandType, trigger.Owner, trigger.Repo, trigger.IssueNumber)
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {

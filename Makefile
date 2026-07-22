@@ -10,9 +10,10 @@ test:
 
 fmt:
 	gofmt -w .
+	goimports -w .
 
 lint: fmt
-	go vet ./...
+	golangci-lint run ./...
 
 clean:
 	rm -f $(BINARY_NAME)
