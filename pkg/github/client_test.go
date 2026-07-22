@@ -429,6 +429,81 @@ func TestFindTriggerComment_FindsImplementForIssue(t *testing.T) {
 	}
 }
 
+func TestFindTriggerComment_SkipsEditedClaudeComment(t *testing.T) {
+	srv := noReactionsServer(t)
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	now := time.Now()
+	comments := []*gh.IssueComment{
+		{
+			ID:        gh.Ptr(int64(100)),
+			Body:      gh.Ptr("/che-ai-assistant claude do something"),
+			User:      &gh.User{Login: gh.Ptr("alice")},
+			CreatedAt: &gh.Timestamp{Time: now},
+			UpdatedAt: &gh.Timestamp{Time: now.Add(time.Minute)},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger != nil {
+		t.Fatalf("expected nil trigger (edited claude comment), got %+v", trigger)
+	}
+}
+
+func TestFindTriggerComment_AllowsNonEditedClaudeComment(t *testing.T) {
+	srv := noReactionsServer(t)
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	now := time.Now()
+	comments := []*gh.IssueComment{
+		{
+			ID:        gh.Ptr(int64(100)),
+			Body:      gh.Ptr("/che-ai-assistant claude do something"),
+			User:      &gh.User{Login: gh.Ptr("alice")},
+			CreatedAt: &gh.Timestamp{Time: now},
+			UpdatedAt: &gh.Timestamp{Time: now},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger == nil {
+		t.Fatal("expected a trigger, got nil")
+	}
+	if trigger.SubCommandType != commands.SubCommandClaude {
+		t.Errorf("expected claude command, got %q", trigger.SubCommandType)
+	}
+}
+
+func TestFindTriggerComment_AllowsEditedNonClaudeComment(t *testing.T) {
+	srv := noReactionsServer(t)
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	now := time.Now()
+	comments := []*gh.IssueComment{
+		{
+			ID:        gh.Ptr(int64(100)),
+			Body:      gh.Ptr("/che-ai-assistant generate-che-doc"),
+			User:      &gh.User{Login: gh.Ptr("alice")},
+			CreatedAt: &gh.Timestamp{Time: now},
+			UpdatedAt: &gh.Timestamp{Time: now.Add(time.Minute)},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger == nil {
+		t.Fatal("expected a trigger for edited non-claude comment, got nil")
+	}
+}
+
 func TestFindTriggerComment_SkipsPROnlyCommandForIssue(t *testing.T) {
 	client := newTestClient([]string{"alice"}, "http://unused")
 

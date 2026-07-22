@@ -79,6 +79,10 @@ func (g *Client) FindTriggerComment(
 			continue
 		}
 
+		if subCommand == commands.SubCommandClaude && isEditedComment(comment) {
+			continue
+		}
+
 		if !g.IsCommentAuthorEligible(comment) {
 			continue
 		}
@@ -206,6 +210,12 @@ func (g *Client) IsIssueAuthorEligible(issue *github.Issue) bool {
 
 func (g *Client) IsCommentAuthorEligible(comment *github.IssueComment) bool {
 	return slices.Contains(g.allowedUsers, comment.GetUser().GetLogin())
+}
+
+func isEditedComment(comment *github.IssueComment) bool {
+	created := comment.GetCreatedAt()
+	updated := comment.GetUpdatedAt()
+	return !created.IsZero() && !updated.IsZero() && !created.Equal(updated)
 }
 
 func (g *Client) HasWelcomeComment(comments []*github.IssueComment) bool {
