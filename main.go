@@ -147,7 +147,7 @@ func pollPullRequests(
 ) {
 	pullRequests, err := ghClient.GetPullRequests(ctx, owner, repo)
 	if err != nil {
-		log.Printf("[ERROR] failed to fetch pull requests: %v, owner %s, repo %s", err, owner, repo)
+		log.Printf("[ERROR] failed to fetch pull requests: %v, https://github.com/%s/%s", err, owner, repo)
 		return
 	}
 
@@ -237,7 +237,7 @@ func pollIssues(
 ) {
 	issues, err := ghClient.GetIssuesWithLabel(ctx, owner, repo, "che-ai-assistant")
 	if err != nil {
-		log.Printf("[ERROR] failed to fetch issues: %v, owner %s, repo %s", err, owner, repo)
+		log.Printf("[ERROR] failed to fetch issues: %v, https://github.com/%s/%s", err, owner, repo)
 		return
 	}
 
