@@ -106,11 +106,14 @@ func Read() (*Config, error) {
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("getting user home directory: %w", err)
+	statePath := os.Getenv("CHE_AI_ASSISTANT_STATE_PATH")
+	if statePath == "" {
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("getting user home directory: %w", err)
+		}
+		statePath = path.Join(userHome, "state.json")
 	}
-	statePath := optionalEnv("CHE_AI_ASSISTANT_STATE_PATH", path.Join(userHome, "state.json"))
 
 	return &Config{
 		GitHubWatchRepos:   splitCSV(githubWatchReposStr),

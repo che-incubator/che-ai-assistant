@@ -69,6 +69,7 @@ All configuration is via environment variables.
 | `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates`                 | Directory containing prompt templates |
 | `CHE_AI_ASSISTANT_OUTPUT_DIR` | System temp dir             | Directory for output files |
 | `CHE_AI_ASSISTANT_LOG_FILE` | `<tmp>/che-ai-assistant.log` | Log file path |
+| `CHE_AI_ASSISTANT_STATE_PATH` | `~/state.json` | Persistent state file path |
 | `CHE_DELETE_DEV_WORKSPACE` | `true`                      | Whether to delete DevWorkspaces after task completion |
 | `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode`           | Comma-separated directories to warn about in PR commits |
 

@@ -1,4 +1,4 @@
-module github.com/tolusha/che-doc-generator
+module che-incubator/che-ai-assistant
 
 go 1.25.0
 
