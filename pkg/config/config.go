@@ -42,8 +42,8 @@ type Config struct {
 	PromptsDir         string
 	LogFile            string
 	MCPServerURL       string
-	WarnDirsCommits []string
-	StateFile       string
+	WarnDirsCommits    []string
+	StateFile          string
 }
 
 func Read() (*Config, error) {

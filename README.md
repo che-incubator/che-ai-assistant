@@ -135,12 +135,6 @@ If your command needs special processing beyond the default template-based flow,
 
 > **Note:** For issue-only commands, the bot will only pick up the command from issues labeled `che-ai-assistant`. For PR commands, the bot monitors all open pull requests from allowed users.
 
-## 4. Deploy
-Prerequisite:
-1. mcp serve deployed
-2. Git credentials configured in a user dashboard eclipse-che
-https://eclipse.dev/che/docs/stable/end-user-guide/mounting-git-configuration/
-
 ## License
 
 [Eclipse Public License 2.0](https://www.eclipse.org/legal/epl-2.0/)

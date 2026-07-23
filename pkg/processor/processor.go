@@ -28,11 +28,10 @@ import (
 )
 
 type TaskProcessor struct {
-	githubClient       *github.Client
-	devWorkspace       *devworkspace.DevWorkspace
-	promptsDir         map[commands.SubCommandType]string
-	taskTimeout        time.Duration
-	deleteDevWorkspace bool
+	githubClient *github.Client
+	devWorkspace *devworkspace.DevWorkspace
+	promptsDir   map[commands.SubCommandType]string
+	taskTimeout  time.Duration
 }
 
 const (

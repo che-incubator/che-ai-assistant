@@ -37,7 +37,7 @@ type Trigger struct {
 }
 
 type Client struct {
-	client       *github.Client
+	client             *github.Client
 	githubUsers        []string
 	githubPollInterval time.Duration
 }
