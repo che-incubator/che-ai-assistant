@@ -1,6 +1,6 @@
 schemaVersion: 2.3.0
 metadata:
-  name: devfile
+  name: che-ai-assistant
 components:
   - name: tools
     container:
