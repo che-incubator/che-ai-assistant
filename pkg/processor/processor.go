@@ -44,42 +44,6 @@ const (
 		"cp -r /tmp/claude/skills /home/user/.claude/skills && " +
 		"cp -r /tmp/claude/settings.json /home/user/.claude/settings.json && " +
 		"cp -r /tmp/claude/.claude.json /home/user/.claude.json"
-
-	createClaudeSupervisorTaskConfigCommand = `mkdir -p ~/.claude
-cat > ~/.claude/settings.json << 'EOF'
-{
-  "theme": "dark",
-  "skipDangerousModePermissionPrompt": true
-}
-EOF
-
-cat > ~/.claude.json << 'EOF'
-{
-  "hasCompletedOnboarding": true,
-  "projects": {
-    "/projects/supervisor-terminal": {
-      "hasTrustDialogAccepted": true
-    }
-  }
-}
-EOF
-
-cat > /projects/supervisor-terminal/.claude/settings.local.json << 'EOF'
-{
-  "enabledMcpjsonServers": [
-    "che-mcp-server",
-    "chemuxer-mcp"
-  ]
-}
-EOF
-
-cat > ~/.noidle <<EOF
-enabled: true
-watchedCommands:
-  - claude
-checkPeriodSeconds: 60
-EOF
-`
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {

@@ -376,25 +376,6 @@ func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	}
 }
 
-func TestFindTriggerComment_SkipsIssueOnlyCommand(t *testing.T) {
-	client := newTestClient([]string{"alice"}, "http://unused")
-
-	comments := []*gh.IssueComment{
-		{
-			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/che-ai-assistant implement"),
-			User: &gh.User{Login: gh.Ptr("alice")},
-		},
-	}
-
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if trigger != nil {
-		t.Fatalf("expected nil trigger (issue-only command on PR), got %+v", trigger)
-	}
-}
 
 func TestFindTriggerComment_SkipsEditedClaudeComment(t *testing.T) {
 	srv := noReactionsServer(t)

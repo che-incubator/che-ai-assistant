@@ -14,6 +14,7 @@ package commands
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -110,7 +111,7 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 }
 
 func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
-	msg := BuildPRWelcomeMessage("devfile/devworkspace-operator")
+	msg := BuildPRWelcomeMessage("devfile/devworkspace-operator", 5*time.Minute)
 
 	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
 	assert.Contains(t, msg, string(SubCommandPullRequestReview))
