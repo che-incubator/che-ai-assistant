@@ -114,66 +114,9 @@ func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
 		p.processHelp(ctx, trigger)
-	case commands.SubCommandImplement:
-		p.processImplement(ctx, trigger)
 	default:
 		p.processDefault(ctx, trigger)
 	}
-}
-
-func (p *TaskProcessor) processImplement(
-	ctx context.Context,
-	trigger *github.Trigger,
-) {
-	devWorkspaceName := fmt.Sprintf(
-		"%s-%s-%s-%d",
-		devWorkspaceNamePrefix,
-		trigger.SubCommandType,
-		trigger.Repo,
-		trigger.IssueNumber,
-	)
-
-	defer func() {
-		if p.deleteDevWorkspace {
-			err := p.devWorkspace.Delete(ctx, devWorkspaceName)
-			if err != nil {
-				log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
-			}
-		}
-	}()
-
-	err := p.devWorkspace.StartWithRepository(
-		ctx,
-		devWorkspaceName,
-		"https://github.com/akurinnoy/supervisor-terminal",
-		"main",
-		createClaudeSupervisorTaskConfigCommand,
-	)
-	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadTerminalOutput)
-		return
-	}
-
-	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5)
-	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadTerminalOutput)
-		return
-	}
-
-	runSupervisorCommand := fmt.Sprintf("cd /projects/supervisor-terminal; mkdir artifacts && ./start.sh --url %s --auto-approve --effort-override high", trigger.IssueURL)
-	err = p.devWorkspace.Exec(ctx, devWorkspaceName, runSupervisorCommand, 0)
-	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadTerminalOutput)
-		return
-	}
-
-	err = p.devWorkspace.WaitSupervisorFinished(ctx, devWorkspaceName)
-	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadTerminalOutput)
-		return
-	}
-
-	p.OnSuccess(ctx, devWorkspaceName, trigger, p.devWorkspace.ReadSupervisorReport)
 }
 
 func (p *TaskProcessor) processDefault(

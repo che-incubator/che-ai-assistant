@@ -35,7 +35,6 @@ const (
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
 	SubCommandCheckPRTestFailures  SubCommandType = "check-pr-test-failures"
 	SubCommandUpdateCheE2ETests    SubCommandType = "update-che-e2e-tests"
-	SubCommandImplement            SubCommandType = "implement"
 	SubCommandClaude               SubCommandType = "claude"
 	SubCommandHelp                 SubCommandType = "help"
 )
@@ -73,11 +72,6 @@ var (
 		{
 			Type:        SubCommandUpdateCheE2ETests,
 			Description: "Update Eclipse Che e2e tests",
-		},
-		{
-			Type:        SubCommandImplement,
-			Description: "Implement a feature or fix a bug",
-			IssueOnly:   true,
 		},
 		{
 			Type:        SubCommandClaude,
