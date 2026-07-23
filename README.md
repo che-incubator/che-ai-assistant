@@ -37,7 +37,6 @@ A GitHub bot that monitors pull requests and issues, executing AI-powered tasks 
 
 | Command | Description |
 |---------|-------------|
-| `/che-ai-assistant implement` | Implement a feature or fix a bug based on the issue description |
 | `/che-ai-assistant help` | Show available commands |
 
 ## Prerequisites
@@ -55,23 +54,21 @@ All configuration is via environment variables.
 | Variable                                | Description                                                                                    |
 |-----------------------------------------|------------------------------------------------------------------------------------------------|
 | `CHE_AI_ASSISTANT_GITHUB_TOKEN`         | GitHub API token for the bot                                                                   |
-| `CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS`   | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
-| `CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS` | Comma-separated list of GitHub usernames authorized to trigger commands                        |
-| `CHE_AI_MCP_SERVER_URL`                 | MCP server URL                                                                                 |
+| `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES`   | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
+| `CHE_AI_ASSISTANT_GITHUB_USERS` | Comma-separated list of GitHub usernames authorized to trigger commands                        |
+| `CHE_AI_ASSISTANT_MCP_SERVER_URL`       | MCP server URL                                                                                 |
 
 ### Optional
 
-| Variable | Default                     | Description |
-|----------|-----------------------------|-------------|
-| `CHE_AI_ASSISTANT_POLL_INTERVAL` | `5m`                        | How often to poll for new PR comments |
-| `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m`                       | Maximum time a handler can run |
-| `CHE_AI_ASSISTANT_MAX_CONCURRENT` | `1`                         | Maximum number of handlers running concurrently |
-| `CHE_AI_ASSISTANT_TEMPLATES_DIR` | `templates`                 | Directory containing prompt templates |
-| `CHE_AI_ASSISTANT_OUTPUT_DIR` | System temp dir             | Directory for output files |
-| `CHE_AI_ASSISTANT_LOG_FILE` | `<tmp>/che-ai-assistant.log` | Log file path |
-| `CHE_AI_ASSISTANT_STATE_PATH` | `~/state.json` | Persistent state file path |
-| `CHE_DELETE_DEV_WORKSPACE` | `true`                      | Whether to delete DevWorkspaces after task completion |
-| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode`           | Comma-separated directories to warn about in PR commits |
+| Variable                                | Default                      | Description |
+|-----------------------------------------|------------------------------|-------------|
+| `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL`        | `5m`                         | How often to poll for new PR comments |
+| `CHE_AI_ASSISTANT_TASK_TIMEOUT`         | `30m`                        | Maximum time a handler can run |
+| `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS` | `1`                          | Maximum number of handlers running concurrently |
+| `CHE_AI_ASSISTANT_PROMPTS_DIR`        | `prompts`                    | Directory containing prompt templates |
+| `CHE_AI_ASSISTANT_LOG_FILE`             | `<tmp>/che-ai-assistant.log` | Log file path |
+| `CHE_AI_ASSISTANT_STATE_FILE`           | `~/state.json`               | Persistent state file path |
+| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS`    | `.claude,.vscode`            | Comma-separated directories to warn about in PR commits |
 
 ## Build and Run
 
@@ -85,10 +82,6 @@ make test
 # Lint
 make lint
 ```
-
-## Adding a New Handler
-
-For most commands, adding a new subcommand requires just two steps: define the subcommand and create a prompt template. The `processDefault` handler in `pkg/processor/processor.go` automatically picks up any command that has a matching template.
 
 ### 1. Define the Subcommand
 
@@ -141,6 +134,12 @@ Requirements:
 If your command needs special processing beyond the default template-based flow, add a case to the `switch` statement in `pkg/processor/processor.go`'s `Trigger` method.
 
 > **Note:** For issue-only commands, the bot will only pick up the command from issues labeled `che-ai-assistant`. For PR commands, the bot monitors all open pull requests from allowed users.
+
+## 4. Deploy
+Prerequisite:
+1. mcp serve deployed
+2. Git credentials configured in a user dashboard eclipse-che
+https://eclipse.dev/che/docs/stable/end-user-guide/mounting-git-configuration/
 
 ## License
 

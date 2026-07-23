@@ -30,9 +30,8 @@ import (
 type TaskProcessor struct {
 	githubClient       *github.Client
 	devWorkspace       *devworkspace.DevWorkspace
-	commandTemplates   map[commands.SubCommandType]string
+	promptsDir         map[commands.SubCommandType]string
 	taskTimeout        time.Duration
-	outputDir          string
 	deleteDevWorkspace bool
 }
 
@@ -47,18 +46,16 @@ const (
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
-	templates, err := loadTemplates(cfg.TemplatesDir)
+	promptsDir, err := loadTemplates(cfg.PromptsDir)
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to load templates"), err)
+		return nil, errors.Join(fmt.Errorf("failed to load prompts"), err)
 	}
 
 	return &TaskProcessor{
-		githubClient:       github.NewGitHubClient(cfg),
-		devWorkspace:       devworkspace.NewDevWorkspace(cfg),
-		commandTemplates:   templates,
-		taskTimeout:        cfg.TaskTimeout,
-		outputDir:          cfg.OutputDir,
-		deleteDevWorkspace: cfg.DeleteDevWorkspace,
+		githubClient: github.NewGitHubClient(cfg),
+		devWorkspace: devworkspace.NewDevWorkspace(cfg),
+		promptsDir:   promptsDir,
+		taskTimeout:  cfg.TaskTimeout,
 	}, nil
 }
 
@@ -109,11 +106,9 @@ func (p *TaskProcessor) processDefault(
 	)
 
 	defer func() {
-		if p.deleteDevWorkspace {
-			err := p.devWorkspace.Delete(ctx, devWorkspaceName)
-			if err != nil {
-				log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
-			}
+		err := p.devWorkspace.Delete(ctx, devWorkspaceName)
+		if err != nil {
+			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 		}
 	}()
 
@@ -156,7 +151,7 @@ func (p *TaskProcessor) OnSuccess(
 	trigger *github.Trigger,
 	readTaskOutput func(context.Context, string) (string, error),
 ) {
-	outputFile := filepath.Join(p.outputDir, fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
+	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
 	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
 		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
 	} else {
@@ -208,7 +203,7 @@ func (p *TaskProcessor) onError(
 	trigger *github.Trigger,
 	readTaskOutput func(context.Context, string) (string, error),
 ) {
-	outputFile := filepath.Join(p.outputDir, fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
+	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
 	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
 		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
 	} else {
@@ -282,12 +277,12 @@ func (p *TaskProcessor) processUnknown(ctx context.Context, trigger *github.Trig
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
-	commandTemplateContent, ok := p.commandTemplates[trigger.SubCommandType]
+	promptContent, ok := p.promptsDir[trigger.SubCommandType]
 	if !ok {
 		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommandType)
 	}
 
-	commandTemplate, err := template.New("prompt").Parse(commandTemplateContent)
+	commandTemplate, err := template.New("prompt").Parse(promptContent)
 	if err != nil {
 		return "", fmt.Errorf("invalid prompt template: %w", err)
 	}

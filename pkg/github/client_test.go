@@ -29,9 +29,9 @@ func newTestClient(allowedUsers []string, baseURL string) *Client {
 	c.BaseURL, _ = c.BaseURL.Parse(baseURL + "/")
 
 	return &Client{
-		client:       c,
-		allowedUsers: allowedUsers,
-		pollInterval: 5 * time.Minute,
+		client:             c,
+		githubUsers:        allowedUsers,
+		githubPollInterval: 5 * time.Minute,
 	}
 }
 

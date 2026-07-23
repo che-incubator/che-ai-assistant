@@ -24,30 +24,26 @@ const (
 	defaultPollInterval       = "5m"
 	defaultTaskTimeout        = "30m"
 	defaultMaxConcurrentTasks = 1
-	defaultTemplatesDir       = "templates"
-	defaultDeleteDevWorkspace = "true"
+	defaultPromptsDir         = "./prompts"
 	defaultWarnDirs           = ".claude,.vscode"
 )
 
 var (
-	defaultLogFile   = path.Join(os.TempDir(), "che-ai-assistant.log")
-	defaultOutputDir = os.TempDir()
+	defaultLogFile = path.Join(os.TempDir(), "che-ai-assistant.log")
 )
 
 type Config struct {
-	GitHubWatchRepos   []string
-	GitHubAllowedUsers []string
+	GitHubRepositories []string
+	GitHubUsers        []string
 	GitHubToken        string
-	TasksPollInterval  time.Duration
+	GitHubPollInterval time.Duration
 	TaskTimeout        time.Duration
 	MaxConcurrentTasks int
-	TemplatesDir       string
-	OutputDir          string
+	PromptsDir         string
 	LogFile            string
 	MCPServerURL       string
-	DeleteDevWorkspace bool
-	WarnDirsCommits    []string
-	StatePath          string
+	WarnDirsCommits []string
+	StateFile       string
 }
 
 func Read() (*Config, error) {
@@ -56,23 +52,21 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	githubWatchReposStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_WATCH_REPOS")
+	githubRepositoriesStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_REPOSITORIES")
 	if err != nil {
 		return nil, err
 	}
 
-	githubAllowedUsersStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_ALLOWED_USERS")
+	githubUsersStr, err := requireEnv("CHE_AI_ASSISTANT_GITHUB_USERS")
 	if err != nil {
 		return nil, err
 	}
 
-	templatesDir := optionalEnv("CHE_AI_ASSISTANT_TEMPLATES_DIR", defaultTemplatesDir)
-
-	outputDir := optionalEnv("CHE_AI_ASSISTANT_OUTPUT_DIR", defaultOutputDir)
+	promptsDir := optionalEnv("CHE_AI_ASSISTANT_PROMPTS_DIR", defaultPromptsDir)
 
 	logFile := optionalEnv("CHE_AI_ASSISTANT_LOG_FILE", defaultLogFile)
 
-	tasksPollInterval, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_POLL_INTERVAL", defaultPollInterval))
+	githubPollInterval, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL", defaultPollInterval))
 	if err != nil {
 		return nil, err
 	}
@@ -82,53 +76,46 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	maxConcurrent := defaultMaxConcurrentTasks
-	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT"); v != "" {
+	maxConcurrentTasks := defaultMaxConcurrentTasks
+	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			return nil, fmt.Errorf("invalid CHE_AI_ASSISTANT_MAX_CONCURRENT: %w", err)
+			return nil, fmt.Errorf("invalid CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS: %w", err)
 		}
 		if n <= 0 {
-			return nil, fmt.Errorf("CHE_AI_ASSISTANT_MAX_CONCURRENT must be positive, got %d", n)
+			return nil, fmt.Errorf("CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS must be positive, got %d", n)
 		}
-		maxConcurrent = n
+		maxConcurrentTasks = n
 	}
 
-	mcpServerURL, err := requireEnv("CHE_AI_MCP_SERVER_URL")
-	if err != nil {
-		return nil, err
-	}
-
-	deleteDevWorkspace, err := strconv.ParseBool(optionalEnv("CHE_DELETE_DEV_WORKSPACE", defaultDeleteDevWorkspace))
+	mcpServerURL, err := requireEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL")
 	if err != nil {
 		return nil, err
 	}
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
-	statePath := os.Getenv("CHE_AI_ASSISTANT_STATE_PATH")
-	if statePath == "" {
+	stateFile := os.Getenv("CHE_AI_ASSISTANT_STATE_FILE")
+	if stateFile == "" {
 		userHome, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("getting user home directory: %w", err)
 		}
-		statePath = path.Join(userHome, "state.json")
+		stateFile = path.Join(userHome, "state.json")
 	}
 
 	return &Config{
-		GitHubWatchRepos:   splitCSV(githubWatchReposStr),
-		TasksPollInterval:  tasksPollInterval,
+		GitHubRepositories: splitCSV(githubRepositoriesStr),
+		GitHubPollInterval: githubPollInterval,
 		TaskTimeout:        taskTimeout,
-		MaxConcurrentTasks: maxConcurrent,
-		TemplatesDir:       templatesDir,
-		OutputDir:          outputDir,
-		GitHubAllowedUsers: splitCSV(githubAllowedUsersStr),
+		MaxConcurrentTasks: maxConcurrentTasks,
+		PromptsDir:         promptsDir,
+		GitHubUsers:        splitCSV(githubUsersStr),
 		LogFile:            logFile,
 		MCPServerURL:       mcpServerURL,
 		GitHubToken:        githubToken,
-		DeleteDevWorkspace: deleteDevWorkspace,
 		WarnDirsCommits:    warnDirsCommits,
-		StatePath:          statePath,
+		StateFile:          stateFile,
 	}, nil
 }
 

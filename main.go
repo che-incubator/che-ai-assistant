@@ -47,7 +47,7 @@ func main() {
 
 	ghClient := github.NewGitHubClient(cfg)
 
-	store, err := state.NewStore(cfg.StatePath)
+	store, err := state.NewStore(cfg.StateFile)
 	if err != nil {
 		log.Fatalf("[ERROR] state.NewStore: %v", err)
 	}
@@ -57,7 +57,7 @@ func main() {
 		log.Fatalf("[ERROR] processor.NewTaskProcessor: %v", err)
 	}
 
-	log.Printf("[INFO] starting che-ai-assistant: watching %v, poll every %v", cfg.GitHubWatchRepos, cfg.TasksPollInterval)
+	log.Printf("[INFO] starting che-ai-assistant: repositories %v, poll every %v", cfg.GitHubRepositories, cfg.GitHubPollInterval)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +69,7 @@ func main() {
 
 	poll := pollFunc(ctx, &wg, cfg, ghClient, taskProcessor, store)
 
-	ticker := time.NewTicker(cfg.TasksPollInterval)
+	ticker := time.NewTicker(cfg.GitHubPollInterval)
 	defer ticker.Stop()
 
 	poll()
@@ -124,7 +124,7 @@ func pollFunc(
 	return func() {
 		cleanupClosedEntries(ctx, ghClient, store)
 
-		for _, repositoryUrl := range cfg.GitHubWatchRepos {
+		for _, repositoryUrl := range cfg.GitHubRepositories {
 			owner, repo := parseRepoSlug(repositoryUrl)
 			if owner == "" || repo == "" {
 				log.Printf("[ERROR] invalid repo format: %s (expected owner/repo or https://github.com/owner/repo)", repositoryUrl)

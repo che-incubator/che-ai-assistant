@@ -38,15 +38,15 @@ type Entry struct {
 }
 
 type Store struct {
-	mu       sync.Mutex
-	filePath string
-	entries  map[string]*Entry
+	mu        sync.Mutex
+	stateFile string
+	entries   map[string]*Entry
 }
 
-func NewStore(filePath string) (*Store, error) {
+func NewStore(stateFile string) (*Store, error) {
 	s := &Store{
-		filePath: filePath,
-		entries:  make(map[string]*Entry),
+		stateFile: stateFile,
+		entries:   make(map[string]*Entry),
 	}
 
 	if err := s.load(); err != nil {
@@ -145,7 +145,7 @@ func makeKey(owner, repo string, number int) string {
 }
 
 func (s *Store) load() error {
-	data, err := os.ReadFile(s.filePath)
+	data, err := os.ReadFile(s.stateFile)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -167,7 +167,7 @@ func (s *Store) save() error {
 		return fmt.Errorf("marshaling state: %w", err)
 	}
 
-	dir := filepath.Dir(s.filePath)
+	dir := filepath.Dir(s.stateFile)
 	tmp, err := os.CreateTemp(dir, "state-*.json")
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
@@ -190,7 +190,7 @@ func (s *Store) save() error {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 
-	if err := os.Rename(tmp.Name(), s.filePath); err != nil {
+	if err := os.Rename(tmp.Name(), s.stateFile); err != nil {
 		if rerr := os.Remove(tmp.Name()); rerr != nil {
 			log.Printf("[WARN] Failed to remove temp file %s: %v", tmp.Name(), rerr)
 		}
