@@ -376,7 +376,6 @@ func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	}
 }
 
-
 func TestFindTriggerComment_SkipsEditedClaudeComment(t *testing.T) {
 	srv := noReactionsServer(t)
 	client := newTestClient([]string{"alice"}, srv.URL)
