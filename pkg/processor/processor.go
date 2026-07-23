@@ -30,7 +30,7 @@ import (
 type TaskProcessor struct {
 	githubClient *github.Client
 	devWorkspace *devworkspace.DevWorkspace
-	promptsDir   map[commands.SubCommandType]string
+	prompts      map[commands.SubCommandType]string
 	taskTimeout  time.Duration
 }
 
@@ -45,7 +45,7 @@ const (
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
-	promptsDir, err := loadTemplates(cfg.PromptsDir)
+	prompts, err := loadPrompts(cfg.PromptsDir)
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to load prompts"), err)
 	}
@@ -53,7 +53,7 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 	return &TaskProcessor{
 		githubClient: github.NewGitHubClient(cfg),
 		devWorkspace: devworkspace.NewDevWorkspace(cfg),
-		promptsDir:   promptsDir,
+		prompts:      prompts,
 		taskTimeout:  cfg.TaskTimeout,
 	}, nil
 }
@@ -276,37 +276,37 @@ func (p *TaskProcessor) processUnknown(ctx context.Context, trigger *github.Trig
 }
 
 func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
-	promptContent, ok := p.promptsDir[trigger.SubCommandType]
+	prompt, ok := p.prompts[trigger.SubCommandType]
 	if !ok {
-		return "", fmt.Errorf("no template found for subcommand %q", trigger.SubCommandType)
+		return "", fmt.Errorf("no prompt found for subcommand %q", trigger.SubCommandType)
 	}
 
-	commandTemplate, err := template.New("prompt").Parse(promptContent)
+	commandTemplate, err := template.New("prompt").Parse(prompt)
 	if err != nil {
 		return "", fmt.Errorf("invalid prompt template: %w", err)
 	}
 
-	var prompt strings.Builder
+	var builder strings.Builder
 	data := map[string]string{
 		"PullRequestURL": trigger.IssueURL,
 		"IssueURL":       trigger.IssueURL,
 		"Args":           trigger.Args,
 	}
 
-	if err := commandTemplate.Execute(&prompt, data); err != nil {
+	if err := commandTemplate.Execute(&builder, data); err != nil {
 		return "", fmt.Errorf("prompt template execution failed: %w", err)
 	}
 
-	return prompt.String(), nil
+	return builder.String(), nil
 }
 
-func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {
+func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading templates directory: %w", err)
 	}
 
-	commandsTemplates := make(map[commands.SubCommandType]string)
+	prompts := make(map[commands.SubCommandType]string)
 
 	for _, file := range files {
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".tmpl") {
@@ -320,12 +320,12 @@ func loadTemplates(dir string) (map[commands.SubCommandType]string, error) {
 
 		content := strings.TrimSpace(string(data))
 		name := strings.TrimSuffix(file.Name(), ".tmpl")
-		commandsTemplates[commands.SubCommandType(name)] = content
+		prompts[commands.SubCommandType(name)] = content
 	}
 
-	if len(commandsTemplates) == 0 {
+	if len(prompts) == 0 {
 		return nil, fmt.Errorf("no templates found in %s", dir)
 	}
 
-	return commandsTemplates, nil
+	return prompts, nil
 }

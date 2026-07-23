@@ -1,23 +1,14 @@
 # che-ai-assistant
 
-A GitHub bot that monitors pull requests and issues, executing AI-powered tasks triggered by comments. Currently supports automatic documentation generation, PR reviews, and issue implementation for [Eclipse Che](https://github.com/eclipse-che) using Claude AI.
+A GitHub bot that monitors pull requests and issues, executing AI-powered tasks triggered by comments.
 
 ## How It Works
 
-### Pull Requests
-
-1. The bot polls configured GitHub repositories for open pull requests.
-2. On eligible PRs, it posts a welcome comment listing available PR commands.
-3. When an allowed user comments `/che-ai-assistant <command>`, the bot picks it up on the next poll cycle.
-4. The bot marks the comment with a :eyes: reaction (to avoid reprocessing) and runs the corresponding handler.
-5. Results are posted back to the PR as a comment update.
-
-### Issues
-
-1. The bot polls for open issues labeled `che-ai-assistant`.
-2. On eligible issues, it posts a welcome comment listing available issue commands.
-3. When an allowed user comments `/che-ai-assistant <command>`, the bot picks it up on the next poll cycle.
-4. The bot marks the comment with a :eyes: reaction and runs the corresponding handler.
+1. The bot polls configured GitHub repositories for opened pull requests and issues (issues must have the `che-ai-assistant` label).
+2. It posts a welcome comment listing available commands.
+3. When a user comments `/che-ai-assistant <command>`, the bot picks it up on the next poll cycle.
+4. The bot marks the comment with a :eyes: reaction and runs the task.
+5. Results are posted back to the pull request or issue.
 
 ## Available Commands
 
@@ -39,38 +30,9 @@ A GitHub bot that monitors pull requests and issues, executing AI-powered tasks 
 |---------|-------------|
 | `/che-ai-assistant help` | Show available commands |
 
-## Prerequisites
+## Development
 
-- Go 1.25+
-- A GitHub token with access to the watched repositories
-- [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) installed (used by handlers that invoke Claude)
-
-## Configuration
-
-All configuration is via environment variables.
-
-### Required
-
-| Variable                                | Description                                                                                    |
-|-----------------------------------------|------------------------------------------------------------------------------------------------|
-| `CHE_AI_ASSISTANT_GITHUB_TOKEN`         | GitHub API token for the bot                                                                   |
-| `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES`   | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
-| `CHE_AI_ASSISTANT_GITHUB_USERS` | Comma-separated list of GitHub usernames authorized to trigger commands                        |
-| `CHE_AI_ASSISTANT_MCP_SERVER_URL`       | MCP server URL                                                                                 |
-
-### Optional
-
-| Variable                                | Default                      | Description |
-|-----------------------------------------|------------------------------|-------------|
-| `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL`        | `5m`                         | How often to poll for new PR comments |
-| `CHE_AI_ASSISTANT_TASK_TIMEOUT`         | `30m`                        | Maximum time a handler can run |
-| `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS` | `1`                          | Maximum number of handlers running concurrently |
-| `CHE_AI_ASSISTANT_PROMPTS_DIR`        | `prompts`                    | Directory containing prompt templates |
-| `CHE_AI_ASSISTANT_LOG_FILE`             | `<tmp>/che-ai-assistant.log` | Log file path |
-| `CHE_AI_ASSISTANT_STATE_FILE`           | `~/state.json`               | Persistent state file path |
-| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS`    | `.claude,.vscode`            | Comma-separated directories to warn about in PR commits |
-
-## Build and Run
+### Build and Run
 
 ```bash
 # Build
@@ -81,59 +43,43 @@ make test
 
 # Lint
 make lint
+
+# Clean
+make clean
 ```
 
-### 1. Define the Subcommand
+### Configuration
 
-In `pkg/commands/commands.go`, add a new `SubCommandType` constant and register it in the `SubCommands` slice:
+All configuration is via environment variables.
 
-```go
-const (
-    SubCommandGenerateCheDoc SubCommandType = "generate-che-doc"
-    SubCommandMyCommand      SubCommandType = "my-command"       // add this
-    SubCommandHelp           SubCommandType = "help"
-)
+| Variable | Default | Description                                                                                    |
+|----------|---------|------------------------------------------------------------------------------------------------|
+| `CHE_AI_ASSISTANT_GITHUB_TOKEN` | *required* | GitHub API token                                                                               |
+| `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES` | *required* | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
+| `CHE_AI_ASSISTANT_GITHUB_USERS` | *required* | Comma-separated list of GitHub usernames authorized to trigger commands                        |
+| `CHE_AI_ASSISTANT_MCP_SERVER_URL` | *required* | MCP server URL                                                                                 |
+| `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL` | `5m` | How often to poll for new comments                                                             |
+| `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m` | Maximum time a task can run                                                                    |
+| `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS` | `1` | Maximum number of tasks running concurrently                                                   |
+| `CHE_AI_ASSISTANT_PROMPTS_DIR` | `./prompts` | Directory containing prompt templates                                                          |
+| `CHE_AI_ASSISTANT_LOG_FILE` | `./che-ai-assistant.log` | Log file path                                                                                  |
+| `CHE_AI_ASSISTANT_STATE_FILE` | `~/state.json` | Persistent state file path                                                                     |
+| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode` | Comma-separated directories to warn about in PR commits                                        |
 
-var SubCommands = []SubCommand{
-    {Type: SubCommandGenerateCheDoc, Description: "Generate a documentation PR based on this PR's changes"},
-    {Type: SubCommandMyCommand, Description: "Short description of what it does", IssueOnly: true},  // add this
-    {Type: SubCommandHelp, Description: "Show this help message"},
-}
-```
+## Deployment
 
-The `SubCommand` struct supports these fields:
+The `deploy/` directory contains Kubernetes manifests for deploying the bot as a DevWorkspace in Eclipse Che:
 
-| Field | Description |
-|-------|-------------|
-| `IssueOnly` | When `true`, the command is only available on issues (triggered via the `che-ai-assistant` label). Commands without this flag are available on pull requests only. |
-| `AllowedRepos` | Restricts the command to specific repositories (e.g., `[]string{"devfile/devworkspace-operator"}`). Empty means available everywhere. |
-| `AutoTrigger` | When `true`, the command is automatically triggered on eligible PRs without a user comment. |
+- `che-ai-assistant-config.ConfigMap.yaml` — environment variable configuration
+- `che-ai-assistant-github-token.Secret.yaml` — GitHub token secret with access to the watched repositories
+- `che-ai-assistant-tasks-config.ConfigMap.yaml` — task-specific configuration
 
-### 2. Create a Prompt Template
+### Steps
 
-Create `templates/my-command.tmpl`. The template is a Go text/template that receives the following variables:
-
-| Variable | Description |
-|----------|-------------|
-| `{{.PullRequestURL}}` | The HTML URL of the triggering pull request (same as `IssueURL`) |
-| `{{.IssueURL}}` | The HTML URL of the triggering issue or pull request |
-| `{{.Args}}` | Any text after the subcommand (e.g., the instruction in `/che-ai-assistant claude <instruction>`) |
-
-```
-You are an automated assistant. Follow these steps exactly:
-1. ...
-2. Use information from this issue: {{.IssueURL}}
-3. ...
-```
-
-Requirements:
-- The filename (minus `.tmpl`) must match the `SubCommandType` constant value.
-
-### 3. Custom Processing (optional)
-
-If your command needs special processing beyond the default template-based flow, add a case to the `switch` statement in `pkg/processor/processor.go`'s `Trigger` method.
-
-> **Note:** For issue-only commands, the bot will only pick up the command from issues labeled `che-ai-assistant`. For PR commands, the bot monitors all open pull requests from allowed users.
+1. Deploy the [MCP server](https://github.com/che-incubator/che-mcp-server).
+2. Configure [Git credentials](https://eclipse.dev/che/docs/stable/end-user-guide/mounting-git-configuration/)).
+3. Update the manifests in `deploy/` with your configuration and apply
+4. Start a workspace from this repository
 
 ## License
 

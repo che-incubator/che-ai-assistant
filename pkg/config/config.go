@@ -26,10 +26,7 @@ const (
 	defaultMaxConcurrentTasks = 1
 	defaultPromptsDir         = "./prompts"
 	defaultWarnDirs           = ".claude,.vscode"
-)
-
-var (
-	defaultLogFile = path.Join(os.TempDir(), "che-ai-assistant.log")
+	defaultLogFile            = "./che-ai-assistant.log"
 )
 
 type Config struct {

@@ -6,8 +6,34 @@ components:
     container:
       image: quay.io/devfile/universal-developer-image:latest
       memoryLimit: 4Gi
+
 projects:
   - name: che-ai-assistant
     git:
       remotes:
         origin: https://github.com/che-incubator/che-ai-assistant
+
+commands:
+  - id: build
+    exec:
+      label: Build project
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: make build
+      group:
+        kind: build
+        isDefault: true
+  - id: start
+    exec:
+      label: Start application
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: "./che-ai-assistant &"
+      group:
+        kind: run
+        isDefault: true
+
+events:
+  postStart:
+    - build
+    - start
