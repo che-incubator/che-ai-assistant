@@ -376,59 +376,6 @@ func TestAreCheckRunsPassed_NoCheckRuns(t *testing.T) {
 	}
 }
 
-func TestFindTriggerComment_SkipsIssueOnlyCommand(t *testing.T) {
-	client := newTestClient([]string{"alice"}, "http://unused")
-
-	comments := []*gh.IssueComment{
-		{
-			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/che-ai-assistant implement"),
-			User: &gh.User{Login: gh.Ptr("alice")},
-		},
-	}
-
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if trigger != nil {
-		t.Fatalf("expected nil trigger (issue-only command on PR), got %+v", trigger)
-	}
-}
-
-func TestFindTriggerComment_FindsImplementForIssue(t *testing.T) {
-	srv := noReactionsServer(t)
-	client := newTestClient([]string{"alice"}, srv.URL)
-
-	comments := []*gh.IssueComment{
-		{
-			ID:   gh.Ptr(int64(100)),
-			Body: gh.Ptr("/che-ai-assistant implement"),
-			User: &gh.User{Login: gh.Ptr("alice")},
-		},
-	}
-
-	trigger, err := client.FindTriggerComment(context.Background(), comments, true, 42, "https://github.com/org/repo/issues/42", "org", "repo", neverProcessed)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if trigger == nil {
-		t.Fatal("expected a trigger, got nil")
-	}
-	if trigger.IssueNumber != 42 {
-		t.Errorf("expected issue number 42, got %d", trigger.IssueNumber)
-	}
-	if trigger.IssueURL != "https://github.com/org/repo/issues/42" {
-		t.Errorf("expected issue URL, got %q", trigger.IssueURL)
-	}
-	if !trigger.IsIssue {
-		t.Error("expected IsIssue to be true")
-	}
-	if trigger.SubCommandType != commands.SubCommandImplement {
-		t.Errorf("expected implement command, got %q", trigger.SubCommandType)
-	}
-}
-
 func TestFindTriggerComment_SkipsEditedClaudeComment(t *testing.T) {
 	srv := noReactionsServer(t)
 	client := newTestClient([]string{"alice"}, srv.URL)

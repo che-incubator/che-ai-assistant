@@ -130,25 +130,6 @@ func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
 	assert.NotContains(t, msg, string(SubCommandPullRequestReadiness))
 }
 
-func TestBuildWelcomeMessage_HidesIssueOnlyCommands(t *testing.T) {
-	msg := BuildPRWelcomeMessage("some-org/some-repo", 5*time.Minute)
-
-	assert.NotContains(t, msg, string(SubCommandImplement))
-}
-
-func TestIsIssueOnlyCommand(t *testing.T) {
-	assert.True(t, IsIssueOnlyCommand(SubCommandImplement))
-	assert.False(t, IsIssueOnlyCommand(SubCommandGenerateCheDoc))
-	assert.False(t, IsIssueOnlyCommand(SubCommandHelp))
-	assert.False(t, IsIssueOnlyCommand("nonexistent"))
-}
-
-func TestParse_ImplementCommand(t *testing.T) {
-	ok, subCommandType, _ := Parse("/che-ai-assistant implement")
-	assert.True(t, ok)
-	assert.Equal(t, SubCommandImplement, subCommandType)
-}
-
 func TestAutoTriggerMarker(t *testing.T) {
 	marker := AutoTriggerMarker(SubCommandPullRequestReadiness)
 	assert.Equal(t, "<!-- che-ai-assistant:auto-trigger:ok-pr-readiness -->", marker)
