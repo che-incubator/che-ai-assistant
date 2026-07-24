@@ -13,6 +13,7 @@ package processor
 
 import (
 	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/common"
 	"che-incubator/che-ai-assistant/pkg/config"
 	"che-incubator/che-ai-assistant/pkg/devworkspace"
 	"che-incubator/che-ai-assistant/pkg/github"
@@ -28,20 +29,15 @@ import (
 )
 
 type TaskProcessor struct {
-	githubClient *github.Client
-	devWorkspace *devworkspace.DevWorkspace
-	prompts      map[commands.SubCommandType]string
-	taskTimeout  time.Duration
+	githubClient     *github.Client
+	devWorkspace     *devworkspace.DevWorkspace
+	prompts          map[commands.SubCommandType]string
+	taskTimeout      time.Duration
+	skillsRepository string
 }
 
 const (
 	devWorkspaceNamePrefix = "che-ai"
-
-	copyClaudeTaskConfigCommand = "mkdir -p /home/user/.claude && " +
-		"cp -r /tmp/claude/plugins /home/user/.claude/plugins && " +
-		"cp -r /tmp/claude/skills /home/user/.claude/skills && " +
-		"cp -r /tmp/claude/settings.json /home/user/.claude/settings.json && " +
-		"cp -r /tmp/claude/.claude.json /home/user/.claude.json"
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
@@ -51,10 +47,11 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 	}
 
 	return &TaskProcessor{
-		githubClient: github.NewGitHubClient(cfg),
-		devWorkspace: devworkspace.NewDevWorkspace(cfg),
-		prompts:      prompts,
-		taskTimeout:  cfg.TaskTimeout,
+		githubClient:     github.NewGitHubClient(cfg),
+		devWorkspace:     devworkspace.NewDevWorkspace(cfg),
+		prompts:          prompts,
+		taskTimeout:      cfg.TaskTimeout,
+		skillsRepository: cfg.SkillsRepository,
 	}, nil
 }
 
@@ -117,7 +114,16 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	err = p.devWorkspace.Start(ctx, devWorkspaceName, copyClaudeTaskConfigCommand)
+	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepository)
+	copyClaudeTaskConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/", skillsRepositoryName)
+
+	err = p.devWorkspace.StartFromRepository(
+		ctx,
+		devWorkspaceName,
+		p.skillsRepository,
+		"",
+		copyClaudeTaskConfigCommand,
+	)
 	if err != nil {
 		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return

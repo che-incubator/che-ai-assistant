@@ -41,6 +41,7 @@ type Config struct {
 	MCPServerURL       string
 	WarnDirsCommits    []string
 	StateFile          string
+	SkillsRepository   string
 }
 
 func Read() (*Config, error) {
@@ -90,6 +91,11 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
+	skillsRepository, err := requireEnv("CHE_AI_ASSISTANT_SKILLS_REPOSITORY")
+	if err != nil {
+		return nil, err
+	}
+
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
 	stateFile := os.Getenv("CHE_AI_ASSISTANT_STATE_FILE")
@@ -113,6 +119,7 @@ func Read() (*Config, error) {
 		GitHubToken:        githubToken,
 		WarnDirsCommits:    warnDirsCommits,
 		StateFile:          stateFile,
+		SkillsRepository:   skillsRepository,
 	}, nil
 }
 

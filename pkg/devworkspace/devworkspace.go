@@ -51,6 +51,33 @@ func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string, post
 	return nil
 }
 
+func (dw *DevWorkspace) StartFromRepository(
+	ctx context.Context,
+	devWorkspaceName string,
+	repoUrl string,
+	branch string,
+	postStartCommand string,
+) error {
+	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
+
+	_, err := dw.mcpClient.CallTool(
+		ctx,
+		mcp.ToolCreateWorkspace,
+		map[string]interface{}{
+			"name":               devWorkspaceName,
+			"tools":              []string{"claude-code", "tmux"},
+			"repo_url":           repoUrl,
+			"branch":             branch,
+			"post_start_command": postStartCommand,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to start the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	return nil
+}
+
 func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout int) error {
 	log.Printf("[INFO] Ensuring the DevWorkspace %s is running", devWorkspaceName)
 

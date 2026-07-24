@@ -13,6 +13,7 @@ package main
 
 import (
 	"che-incubator/che-ai-assistant/pkg/commands"
+	"che-incubator/che-ai-assistant/pkg/common"
 	"che-incubator/che-ai-assistant/pkg/config"
 	"che-incubator/che-ai-assistant/pkg/github"
 	"che-incubator/che-ai-assistant/pkg/processor"
@@ -22,16 +23,11 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"regexp"
 	"sync"
 	"syscall"
 	"time"
 
 	gh "github.com/google/go-github/v68/github"
-)
-
-var (
-	githubRepository = regexp.MustCompile(`^(?:https?://[^/]+/)?([^/]+)/([^/]+?)(?:\.git)?$`)
 )
 
 func main() {
@@ -125,7 +121,7 @@ func pollFunc(
 		cleanupClosedEntries(ctx, ghClient, store)
 
 		for _, repositoryUrl := range cfg.GitHubRepositories {
-			owner, repo := parseRepoSlug(repositoryUrl)
+			owner, repo := common.ParseRepoSlug(repositoryUrl)
 			if owner == "" || repo == "" {
 				log.Printf("[ERROR] invalid repo format: %s (expected owner/repo or https://github.com/owner/repo)", repositoryUrl)
 				continue
@@ -381,13 +377,4 @@ func cleanupClosedEntries(ctx context.Context, ghClient *github.Client, store *s
 			}
 		}
 	}
-}
-
-func parseRepoSlug(repo string) (owner, name string) {
-	m := githubRepository.FindStringSubmatch(repo)
-	if m == nil {
-		return "", ""
-	}
-
-	return m[1], m[2]
 }
