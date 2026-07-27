@@ -94,12 +94,6 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 			repo:     "devfile/devworkspace-operator",
 			expected: true,
 		},
-		{
-			name:     "restricted command unavailable for other repo",
-			sub:      SubCommandPullRequestReadiness,
-			repo:     "eclipse-che/che-dashboard",
-			expected: false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -118,16 +112,6 @@ func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
 	assert.Contains(t, msg, string(SubCommandHelp))
 	assert.Contains(t, msg, string(SubCommandPullRequestReadiness))
 	assert.Contains(t, msg, string(SubCommandCheckPRTestFailures))
-}
-
-func TestBuildWelcomeMessage_HidesRestrictedCommandForOtherRepo(t *testing.T) {
-	msg := BuildPRWelcomeMessage("eclipse-che/che-dashboard", 5*time.Minute)
-
-	assert.Contains(t, msg, string(SubCommandGenerateCheDoc))
-	assert.Contains(t, msg, string(SubCommandPullRequestReview))
-	assert.Contains(t, msg, string(SubCommandHelp))
-	assert.Contains(t, msg, string(SubCommandCheckPRTestFailures))
-	assert.NotContains(t, msg, string(SubCommandPullRequestReadiness))
 }
 
 func TestAutoTriggerMarker(t *testing.T) {

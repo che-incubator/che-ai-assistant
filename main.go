@@ -26,8 +26,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	gh "github.com/google/go-github/v68/github"
 )
 
 func main() {
@@ -203,11 +201,6 @@ func pollPullRequests(
 			continue
 		}
 
-		// check auto trigger
-		if trigger == nil && !pullRequest.GetDraft() {
-			trigger = postAutoTrigger(ctx, owner, repo, ghClient, comments, pullRequest)
-		}
-
 		if trigger != nil {
 			if err := store.MarkProcessed(owner, repo, pullRequest.GetNumber(), trigger.CommentID); err != nil {
 				log.Printf("[ERROR] failed to mark trigger as processed: %v, %s", err, prURL)
@@ -294,63 +287,6 @@ func pollIssues(
 			dispatchTrigger(trigger)
 		}
 	}
-}
-
-func postAutoTrigger(
-	ctx context.Context,
-	owner string,
-	repo string,
-	ghClient *github.Client,
-	comments []*gh.IssueComment,
-	pullRequest *gh.PullRequest,
-) *github.Trigger {
-	repoFullName := owner + "/" + repo
-	for _, subCommand := range commands.SubCommands {
-		if !subCommand.AutoTrigger {
-			continue
-		}
-
-		if !commands.IsCommandAvailableForRepo(subCommand.Type, repoFullName) {
-			continue
-		}
-
-		marker := commands.AutoTriggerMarker(subCommand.Type)
-		if ghClient.HasAutoTriggerComment(comments, marker) {
-			continue
-		}
-
-		prURL := pullRequest.GetHTMLURL()
-
-		passed, err := ghClient.AreCheckRunsPassed(ctx, owner, repo, pullRequest.GetHead().GetSHA())
-		if err != nil {
-			log.Printf("[ERROR] failed to check CI status: %v, %s", err, prURL)
-			continue
-		}
-		if !passed {
-			continue
-		}
-
-		log.Printf("[INFO] auto-triggering %s on %s", subCommand.Type, prURL)
-
-		comment, err := ghClient.CreateComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildAutoTriggerComment(subCommand.Type))
-		if err != nil {
-			log.Printf("[ERROR] failed to post auto-trigger comment: %v, %s", err, prURL)
-			continue
-		}
-
-		return &github.Trigger{
-			Owner:          owner,
-			Repo:           repo,
-			CommentID:      comment.GetID(),
-			IsIssue:        false,
-			IssueNumber:    pullRequest.GetNumber(),
-			IssueURL:       pullRequest.GetHTMLURL(),
-			CommentBody:    comment.GetBody(),
-			SubCommandType: subCommand.Type,
-		}
-	}
-
-	return nil
 }
 
 func cleanupClosedEntries(ctx context.Context, ghClient *github.Client, store *state.Store) {

@@ -57,12 +57,12 @@ All configuration is via environment variables.
 | `CHE_AI_ASSISTANT_GITHUB_TOKEN` | *required* | GitHub API token                                                                               |
 | `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES` | *required* | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
 | `CHE_AI_ASSISTANT_GITHUB_USERS` | *required* | Comma-separated list of GitHub usernames authorized to trigger commands                        |
-| `CHE_AI_ASSISTANT_SKILLS_REPOSITORY` | *required* | Repository containing skills for tasks                                                         |
+| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY` | *required* | Repository containing skills for tasks                                                         |
 | `CHE_AI_ASSISTANT_MCP_SERVER_URL` | *required* | MCP server URL                                                                                 |
 | `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL` | `5m` | How often to poll for new comments                                                             |
 | `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m` | Maximum time a task can run                                                                    |
 | `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS` | `1` | Maximum number of tasks running concurrently                                                   |
-| `CHE_AI_ASSISTANT_PROMPTS_DIR` | `./prompts` | Directory containing prompt templates                                                          |
+| `CHE_AI_ASSISTANT_PROMPTS_DIR` | `./prompts` | Directory containing Claude prompt                                                             |
 | `CHE_AI_ASSISTANT_LOG_FILE` | `./che-ai-assistant.log` | Log file path                                                                                  |
 | `CHE_AI_ASSISTANT_STATE_FILE` | `~/state.json` | Persistent state file path                                                                     |
 | `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode` | Comma-separated directories to warn about in PR commits                                        |
@@ -78,9 +78,10 @@ The `deploy/` directory contains Kubernetes manifests for deploying the bot as a
 ### Steps
 
 1. Deploy the [MCP server](https://github.com/che-incubator/che-mcp-server).
-2. Configure [Git credentials](https://eclipse.dev/che/docs/stable/end-user-guide/mounting-git-configuration/)).
-3. Update the manifests in `deploy/` with your configuration and apply
-4. Start a workspace from this repository
+2. Configure Claude credentials in a namespace. 
+3. Configure [Git credentials](https://eclipse.dev/che/docs/stable/end-user-guide/mounting-git-configuration/).
+4. Update the manifests in `deploy/` with your configuration and apply.
+5. Start a workspace from this repository
 
 ## License
 

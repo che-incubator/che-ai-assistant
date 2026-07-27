@@ -26,16 +26,16 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			env: map[string]string{
-				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES":  "org/repo1, org/repo2 ",
-				"CHE_AI_ASSISTANT_GITHUB_USERS":         "alice,bob",
-				"CHE_AI_ASSISTANT_GITHUB_TOKEN":         "token",
-				"CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL": "5m",
-				"CHE_AI_ASSISTANT_TASK_TIMEOUT":         "1h",
-				"CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS": "3",
-				"CHE_AI_ASSISTANT_PROMPTS_DIR":          "/custom/prompts",
-				"CHE_AI_ASSISTANT_LOG_FILE":             "/var/log/gen.log",
-				"CHE_AI_ASSISTANT_MCP_SERVER_URL":       "http://che-mcp-server:8080/mcp",
-				"CHE_AI_ASSISTANT_SKILLS_REPOSITORY":    "https://repo",
+				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES":     "org/repo1, org/repo2 ",
+				"CHE_AI_ASSISTANT_GITHUB_USERS":            "alice,bob",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":            "token",
+				"CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL":    "5m",
+				"CHE_AI_ASSISTANT_TASK_TIMEOUT":            "1h",
+				"CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS":    "3",
+				"CHE_AI_ASSISTANT_PROMPTS_DIR":             "/custom/prompts",
+				"CHE_AI_ASSISTANT_LOG_FILE":                "/var/log/gen.log",
+				"CHE_AI_ASSISTANT_MCP_SERVER_URL":          "http://che-mcp-server:8080/mcp",
+				"CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY": "https://repo",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, []string{"org/repo1", "org/repo2"}, cfg.GitHubRepositories)
@@ -52,12 +52,12 @@ func TestParse(t *testing.T) {
 		},
 		{
 			env: map[string]string{
-				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES": "org/repo1",
-				"CHE_AI_ASSISTANT_GITHUB_USERS":        "alice",
-				"CHE_AI_ASSISTANT_GITHUB_TOKEN":        "token",
-				"CHE_AI_ASSISTANT_MCP_SERVER_URL":      "http://mcp:8080",
-				"CHE_AI_ASSISTANT_SKILLS_REPOSITORY":   "https://repo",
-				"CHE_AI_ASSISTANT_WARN_DIRS_COMMITS":   ".claude,.vscode,.idea",
+				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES":     "org/repo1",
+				"CHE_AI_ASSISTANT_GITHUB_USERS":            "alice",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":            "token",
+				"CHE_AI_ASSISTANT_MCP_SERVER_URL":          "http://mcp:8080",
+				"CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY": "https://repo",
+				"CHE_AI_ASSISTANT_WARN_DIRS_COMMITS":       ".claude,.vscode,.idea",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, []string{".claude", ".vscode", ".idea"}, cfg.WarnDirsCommits)
@@ -65,11 +65,11 @@ func TestParse(t *testing.T) {
 		},
 		{
 			env: map[string]string{
-				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES": "org/repo1",
-				"CHE_AI_ASSISTANT_GITHUB_USERS":        "alice",
-				"CHE_AI_ASSISTANT_GITHUB_TOKEN":        "token",
-				"CHE_AI_ASSISTANT_SKILLS_REPOSITORY":   "https://repo",
-				"CHE_AI_ASSISTANT_MCP_SERVER_URL":      "http://mcp:8080",
+				"CHE_AI_ASSISTANT_GITHUB_REPOSITORIES":     "org/repo1",
+				"CHE_AI_ASSISTANT_GITHUB_USERS":            "alice",
+				"CHE_AI_ASSISTANT_GITHUB_TOKEN":            "token",
+				"CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY": "https://repo",
+				"CHE_AI_ASSISTANT_MCP_SERVER_URL":          "http://mcp:8080",
 			},
 			assertCfg: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, []string{".claude", ".vscode"}, cfg.WarnDirsCommits)

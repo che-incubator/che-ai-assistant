@@ -115,14 +115,14 @@ func (p *TaskProcessor) processDefault(
 	}
 
 	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepository)
-	copyClaudeTaskConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/", skillsRepositoryName)
+	copyClaudeConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s", skillsRepositoryName, skillsRepositoryName)
 
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
 		p.skillsRepository,
 		"",
-		copyClaudeTaskConfigCommand,
+		copyClaudeConfigCommand,
 	)
 	if err != nil {
 		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
@@ -309,7 +309,7 @@ func (p *TaskProcessor) buildPrompt(trigger *github.Trigger) (string, error) {
 func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("reading templates directory: %w", err)
+		return nil, fmt.Errorf("reading prompts directory: %w", err)
 	}
 
 	prompts := make(map[commands.SubCommandType]string)
@@ -330,7 +330,7 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 	}
 
 	if len(prompts) == 0 {
-		return nil, fmt.Errorf("no templates found in %s", dir)
+		return nil, fmt.Errorf("no prompts found in %s", dir)
 	}
 
 	return prompts, nil

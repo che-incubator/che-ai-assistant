@@ -60,16 +60,20 @@ func (dw *DevWorkspace) StartFromRepository(
 ) error {
 	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
 
+	params := map[string]interface{}{
+		"name":               devWorkspaceName,
+		"tools":              []string{"claude-code", "tmux"},
+		"repo_url":           repoUrl,
+		"post_start_command": postStartCommand,
+	}
+	if branch != "" {
+		params["branch"] = branch
+	}
+
 	_, err := dw.mcpClient.CallTool(
 		ctx,
 		mcp.ToolCreateWorkspace,
-		map[string]interface{}{
-			"name":               devWorkspaceName,
-			"tools":              []string{"claude-code", "tmux"},
-			"repo_url":           repoUrl,
-			"branch":             branch,
-			"post_start_command": postStartCommand,
-		},
+		params,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start the DevWorkspace %s: %w", devWorkspaceName, err)

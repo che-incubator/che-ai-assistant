@@ -43,7 +43,6 @@ type SubCommand struct {
 	Type         SubCommandType
 	Description  string
 	AllowedRepos []string
-	AutoTrigger  bool
 	IssueOnly    bool
 }
 
@@ -60,10 +59,8 @@ var (
 			Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)",
 		},
 		{
-			Type:         SubCommandPullRequestReadiness,
-			Description:  "Ensure PR has validation steps",
-			AllowedRepos: []string{"devfile/devworkspace-operator"},
-			AutoTrigger:  true,
+			Type:        SubCommandPullRequestReadiness,
+			Description: "Ensure PR has validation steps",
 		},
 		{
 			Type:        SubCommandCheckPRTestFailures,

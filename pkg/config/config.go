@@ -91,7 +91,7 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	skillsRepository, err := requireEnv("CHE_AI_ASSISTANT_SKILLS_REPOSITORY")
+	skillsRepository, err := requireEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY")
 	if err != nil {
 		return nil, err
 	}
