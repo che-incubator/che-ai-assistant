@@ -23,21 +23,28 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
 )
 
 type TaskProcessor struct {
-	githubClient     *github.Client
-	devWorkspace     *devworkspace.DevWorkspace
-	prompts          map[commands.SubCommandType]string
-	taskTimeout      time.Duration
-	skillsRepository string
+	githubClient           *github.Client
+	devWorkspace           *devworkspace.DevWorkspace
+	prompts                map[commands.SubCommandType]string
+	taskTimeout            time.Duration
+	skillsRepositoryName   string
+	skillsRepositoryBranch string
 }
 
 const (
 	devWorkspaceNamePrefix = "che-ai"
+)
+
+var (
+	repositoryNamePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	emptyTaskOutputReader = func(ctx context.Context, s string) (string, error) { return "", nil }
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
@@ -47,11 +54,12 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 	}
 
 	return &TaskProcessor{
-		githubClient:     github.NewGitHubClient(cfg),
-		devWorkspace:     devworkspace.NewDevWorkspace(cfg),
-		prompts:          prompts,
-		taskTimeout:      cfg.TaskTimeout,
-		skillsRepository: cfg.SkillsRepository,
+		githubClient:           github.NewGitHubClient(cfg),
+		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
+		prompts:                prompts,
+		taskTimeout:            cfg.TaskTimeout,
+		skillsRepositoryName:   cfg.SkillsRepositoryName,
+		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
 	}, nil
 }
 
@@ -89,10 +97,6 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	if trigger.SubCommandType == commands.SubCommandClaude && trigger.User != "tolusha" {
-		return
-	}
-
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
 		devWorkspaceNamePrefix,
@@ -110,28 +114,33 @@ func (p *TaskProcessor) processDefault(
 
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
-	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepository)
+	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepositoryName)
+	if !repositoryNamePattern.MatchString(devWorkspaceName) {
+		p.onError(ctx, devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
+		return
+	}
+
 	copyClaudeConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s", skillsRepositoryName, skillsRepositoryName)
 
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
-		p.skillsRepository,
-		"",
+		p.skillsRepositoryName,
+		p.skillsRepositoryBranch,
 		copyClaudeConfigCommand,
 	)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
-	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5)
+	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadTerminalOutput)
+		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
@@ -147,10 +156,10 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	p.OnSuccess(ctx, devWorkspaceName, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+	p.onSuccess(ctx, devWorkspaceName, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 }
 
-func (p *TaskProcessor) OnSuccess(
+func (p *TaskProcessor) onSuccess(
 	ctx context.Context,
 	devWorkspaceName string,
 	trigger *github.Trigger,
@@ -321,7 +330,7 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 
 		data, err := os.ReadFile(filepath.Join(dir, file.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("reading template %s: %w", file.Name(), err)
+			return nil, fmt.Errorf("reading prompts %s: %w", file.Name(), err)
 		}
 
 		content := strings.TrimSpace(string(data))

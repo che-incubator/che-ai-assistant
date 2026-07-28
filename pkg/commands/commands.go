@@ -12,7 +12,6 @@
 package commands
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -26,9 +25,6 @@ const (
 
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
 	WarningMarker = "<!-- che-ai-assistant:file-warning -->"
-
-	AutoTriggerMarkerPrefix = "<!-- che-ai-assistant:auto-trigger:"
-	AutoTriggerMarkerFmt    = AutoTriggerMarkerPrefix + "%s -->"
 
 	SubCommandGenerateCheDoc       SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
@@ -162,18 +158,6 @@ func Parse(body string) (bool, SubCommandType, string) {
 	}
 
 	return true, SubCommandType(sub), args
-}
-
-func AutoTriggerMarker(sub SubCommandType) string {
-	return fmt.Sprintf(AutoTriggerMarkerFmt, sub)
-}
-
-func BuildAutoTriggerComment(sub SubCommandType) string {
-	return fmt.Sprintf("%s %s\n%s", Command, sub, AutoTriggerMarker(sub))
-}
-
-func IsAutoTriggerComment(body string) bool {
-	return strings.Contains(body, AutoTriggerMarkerPrefix)
 }
 
 func IsIssueOnlyCommand(sub SubCommandType) bool {

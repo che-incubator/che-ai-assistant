@@ -52,20 +52,21 @@ make clean
 
 All configuration is via environment variables.
 
-| Variable | Default | Description                                                                                    |
-|----------|---------|------------------------------------------------------------------------------------------------|
-| `CHE_AI_ASSISTANT_GITHUB_TOKEN` | *required* | GitHub API token                                                                               |
-| `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES` | *required* | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
-| `CHE_AI_ASSISTANT_GITHUB_USERS` | *required* | Comma-separated list of GitHub usernames authorized to trigger commands                        |
-| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY` | *required* | Repository containing skills for tasks                                                         |
-| `CHE_AI_ASSISTANT_MCP_SERVER_URL` | *required* | MCP server URL                                                                                 |
-| `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL` | `5m` | How often to poll for new comments                                                             |
-| `CHE_AI_ASSISTANT_TASK_TIMEOUT` | `30m` | Maximum time a task can run                                                                    |
-| `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS` | `1` | Maximum number of tasks running concurrently                                                   |
-| `CHE_AI_ASSISTANT_PROMPTS_DIR` | `./prompts` | Directory containing Claude prompt                                                             |
-| `CHE_AI_ASSISTANT_LOG_FILE` | `./che-ai-assistant.log` | Log file path                                                                                  |
-| `CHE_AI_ASSISTANT_STATE_FILE` | `~/state.json` | Persistent state file path                                                                     |
-| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS` | `.claude,.vscode` | Comma-separated directories to warn about in PR commits                                        |
+| Variable                                          | Default                  | Description                                                                                    |
+|---------------------------------------------------|--------------------------|------------------------------------------------------------------------------------------------|
+| `CHE_AI_ASSISTANT_GITHUB_TOKEN`                   | *required*               | GitHub API token                                                                               |
+| `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES`            | *required*               | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
+| `CHE_AI_ASSISTANT_GITHUB_USERS`                   | *required*               | Comma-separated list of GitHub usernames authorized to trigger commands                        |
+| `CHE_AI_ASSISTANT_MCP_SERVER_URL`                 | *required*               | MCP server URL                                                                                 |
+| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_NAME`   | `https://github.com/che-incubator/che-ai-assistant-skills`               | Repository containing skills for tasks                                                         |
+| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH` | `main`                   | Repository task skills branch name or commit                                                   |
+| `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL`           | `5m`                     | How often to poll for new comments                                                             |
+| `CHE_AI_ASSISTANT_TASK_TIMEOUT`                   | `30m`                    | Maximum time a task can run                                                                    |
+| `CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS`           | `1`                      | Maximum number of tasks running concurrently                                                   |
+| `CHE_AI_ASSISTANT_PROMPTS_DIR`                    | `./prompts`              | Directory containing Claude prompt                                                             |
+| `CHE_AI_ASSISTANT_LOG_FILE`                       | `./che-ai-assistant.log` | Log file path                                                                                  |
+| `CHE_AI_ASSISTANT_STATE_FILE`                     | `~/state.json`           | Persistent state file path                                                                     |
+| `CHE_AI_ASSISTANT_WARN_DIRS_COMMITS`              | `.claude,.vscode`        | Comma-separated directories to warn about in PR commits                                        |
 
 ## Deployment
 

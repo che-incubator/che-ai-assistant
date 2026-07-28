@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -54,9 +55,11 @@ type Client struct {
 
 func New(serverUrl string) *Client {
 	client := &Client{
-		serverUrl:  serverUrl,
-		httpClient: &http.Client{},
-		currentId:  atomic.Int32{},
+		serverUrl: serverUrl,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		currentId: atomic.Int32{},
 	}
 	client.currentId.Store(1)
 

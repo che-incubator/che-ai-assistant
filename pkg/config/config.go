@@ -21,27 +21,30 @@ import (
 )
 
 const (
-	defaultPollInterval       = "5m"
-	defaultTaskTimeout        = "30m"
-	defaultMaxConcurrentTasks = 1
-	defaultPromptsDir         = "./prompts"
-	defaultWarnDirs           = ".claude,.vscode"
-	defaultLogFile            = "./che-ai-assistant.log"
+	defaultPollInterval          = "5m"
+	defaultTaskTimeout           = "30m"
+	defaultMaxConcurrentTasks    = 1
+	defaultPromptsDir            = "./prompts"
+	defaultWarnDirs              = ".claude,.vscode"
+	defaultLogFile               = "./che-ai-assistant.log"
+	defaultSkillRepositoryName   = "https://github.com/che-incubator/che-ai-assistant-skills"
+	defaultSkillRepositoryBranch = "main"
 )
 
 type Config struct {
-	GitHubRepositories []string
-	GitHubUsers        []string
-	GitHubToken        string
-	GitHubPollInterval time.Duration
-	TaskTimeout        time.Duration
-	MaxConcurrentTasks int
-	PromptsDir         string
-	LogFile            string
-	MCPServerURL       string
-	WarnDirsCommits    []string
-	StateFile          string
-	SkillsRepository   string
+	GitHubRepositories     []string
+	GitHubUsers            []string
+	GitHubToken            string
+	GitHubPollInterval     time.Duration
+	TaskTimeout            time.Duration
+	MaxConcurrentTasks     int
+	PromptsDir             string
+	LogFile                string
+	MCPServerURL           string
+	WarnDirsCommits        []string
+	StateFile              string
+	SkillsRepositoryName   string
+	SkillsRepositoryBranch string
 }
 
 func Read() (*Config, error) {
@@ -91,10 +94,8 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	skillsRepository, err := requireEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY")
-	if err != nil {
-		return nil, err
-	}
+	skillsRepositoryName := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_NAME", defaultSkillRepositoryName)
+	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
@@ -108,18 +109,19 @@ func Read() (*Config, error) {
 	}
 
 	return &Config{
-		GitHubRepositories: splitCSV(githubRepositoriesStr),
-		GitHubPollInterval: githubPollInterval,
-		TaskTimeout:        taskTimeout,
-		MaxConcurrentTasks: maxConcurrentTasks,
-		PromptsDir:         promptsDir,
-		GitHubUsers:        splitCSV(githubUsersStr),
-		LogFile:            logFile,
-		MCPServerURL:       mcpServerURL,
-		GitHubToken:        githubToken,
-		WarnDirsCommits:    warnDirsCommits,
-		StateFile:          stateFile,
-		SkillsRepository:   skillsRepository,
+		GitHubRepositories:     splitCSV(githubRepositoriesStr),
+		GitHubPollInterval:     githubPollInterval,
+		TaskTimeout:            taskTimeout,
+		MaxConcurrentTasks:     maxConcurrentTasks,
+		PromptsDir:             promptsDir,
+		GitHubUsers:            splitCSV(githubUsersStr),
+		LogFile:                logFile,
+		MCPServerURL:           mcpServerURL,
+		GitHubToken:            githubToken,
+		WarnDirsCommits:        warnDirsCommits,
+		StateFile:              stateFile,
+		SkillsRepositoryName:   skillsRepositoryName,
+		SkillsRepositoryBranch: skillsRepositoryBranch,
 	}, nil
 }
 

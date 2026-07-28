@@ -230,12 +230,6 @@ func (g *Client) HasWarningComment(comments []*github.IssueComment) bool {
 	})
 }
 
-func (g *Client) HasAutoTriggerComment(comments []*github.IssueComment, marker string) bool {
-	return slices.ContainsFunc(comments, func(c *github.IssueComment) bool {
-		return strings.Contains(c.GetBody(), marker)
-	})
-}
-
 func (g *Client) AreCheckRunsPassed(
 	ctx context.Context,
 	owner, repo, ref string,

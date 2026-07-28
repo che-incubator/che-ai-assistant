@@ -259,26 +259,6 @@ func TestHasWarningComment(t *testing.T) {
 	}
 }
 
-func TestHasAutoTriggerComment(t *testing.T) {
-	client := newTestClient(nil, "http://unused")
-	marker := commands.AutoTriggerMarker(commands.SubCommandPullRequestReadiness)
-
-	withMarker := []*gh.IssueComment{
-		{Body: gh.Ptr("regular comment")},
-		{Body: gh.Ptr(commands.BuildAutoTriggerComment(commands.SubCommandPullRequestReadiness))},
-	}
-	if !client.HasAutoTriggerComment(withMarker, marker) {
-		t.Error("expected auto-trigger comment to be found")
-	}
-
-	withoutMarker := []*gh.IssueComment{
-		{Body: gh.Ptr("regular comment")},
-	}
-	if client.HasAutoTriggerComment(withoutMarker, marker) {
-		t.Error("expected no auto-trigger comment")
-	}
-}
-
 func TestAreCheckRunsPassed_AllSuccess(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /repos/org/repo/commits/abc123/check-runs", func(w http.ResponseWriter, r *http.Request) {

@@ -60,20 +60,16 @@ func (dw *DevWorkspace) StartFromRepository(
 ) error {
 	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
 
-	params := map[string]interface{}{
-		"name":               devWorkspaceName,
-		"tools":              []string{"claude-code", "tmux"},
-		"repo_url":           repoUrl,
-		"post_start_command": postStartCommand,
-	}
-	if branch != "" {
-		params["branch"] = branch
-	}
-
 	_, err := dw.mcpClient.CallTool(
 		ctx,
 		mcp.ToolCreateWorkspace,
-		params,
+		map[string]interface{}{
+			"name":               devWorkspaceName,
+			"tools":              []string{"claude-code", "tmux"},
+			"repo_url":           repoUrl,
+			"branch":             branch,
+			"post_start_command": postStartCommand,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start the DevWorkspace %s: %w", devWorkspaceName, err)
@@ -82,42 +78,45 @@ func (dw *DevWorkspace) StartFromRepository(
 	return nil
 }
 
-func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout int) error {
+func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout time.Duration) error {
 	log.Printf("[INFO] Ensuring the DevWorkspace %s is running", devWorkspaceName)
 
-	deadline := time.Now().Add(time.Duration(timeout) * time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
 	for {
-		output, err := dw.mcpClient.CallTool(
-			ctx,
-			mcp.ToolGetWorkspaceStatus,
-			map[string]interface{}{
-				"workspace": devWorkspaceName,
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
-		}
-
-		var status mcp.WorkspaceStatus
-		if err := json.Unmarshal([]byte(output), &status); err != nil {
-			return fmt.Errorf("failed to unmarshal DevWorkspace status %s: %w", devWorkspaceName, err)
-		}
-
-		switch status.Phase {
-		case "Running":
-			return nil
-		case "Failed":
-			return fmt.Errorf("DevWorkspace %s failed to start", devWorkspaceName)
-		case "Stopped":
-			return fmt.Errorf("DevWorkspace %s stopped", devWorkspaceName)
-		}
-
-		if time.Now().After(deadline) {
+		select {
+		case <-ctx.Done():
 			return fmt.Errorf("timed out waiting for DevWorkspace %s to reach Running state", devWorkspaceName)
-		}
+		case <-ticker.C:
+			output, err := dw.mcpClient.CallTool(
+				ctx,
+				mcp.ToolGetWorkspaceStatus,
+				map[string]interface{}{
+					"workspace": devWorkspaceName,
+				},
+			)
+			if err != nil {
+				return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
+			}
 
-		time.Sleep(10 * time.Second)
+			var status mcp.WorkspaceStatus
+			if err := json.Unmarshal([]byte(output), &status); err != nil {
+				return fmt.Errorf("failed to unmarshal DevWorkspace status %s: %w", devWorkspaceName, err)
+			}
+
+			switch status.Phase {
+			case "Running":
+				return nil
+			case "Failed":
+				return fmt.Errorf("DevWorkspace %s failed to start", devWorkspaceName)
+			case "Stopped":
+				return fmt.Errorf("DevWorkspace %s stopped", devWorkspaceName)
+			}
+		}
 	}
 }
 
@@ -163,6 +162,9 @@ func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName s
 					return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
 				}
 			}
+
+			// reset error counter
+			readClaudeTaskStatusErrorCount = 0
 
 			switch status {
 			case mcp.ClaudeStatusRunning:
