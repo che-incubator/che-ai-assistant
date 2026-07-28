@@ -32,25 +32,6 @@ func NewDevWorkspace(cfg *config.Config) *DevWorkspace {
 	}
 }
 
-func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string, postStartCommand string) error {
-	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
-
-	_, err := dw.mcpClient.CallTool(
-		ctx,
-		mcp.ToolCreateWorkspace,
-		map[string]interface{}{
-			"name":               devWorkspaceName,
-			"tools":              []string{"claude-code", "tmux"},
-			"post_start_command": postStartCommand,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to start the DevWorkspace %s: %w", devWorkspaceName, err)
-	}
-
-	return nil
-}
-
 func (dw *DevWorkspace) StartFromRepository(
 	ctx context.Context,
 	devWorkspaceName string,
@@ -161,6 +142,8 @@ func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName s
 				if readClaudeTaskStatusErrorCount >= maxReadClaudeTaskStatusErrorsNumber {
 					return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
 				}
+
+				continue
 			}
 
 			// reset error counter
@@ -223,29 +206,6 @@ func (dw *DevWorkspace) ReadWorkspaceAgentOutput(ctx context.Context, devWorkspa
 	}
 
 	return taskOutput.Output, nil
-}
-
-func (dw *DevWorkspace) ReadTerminalOutput(ctx context.Context, devWorkspaceName string) (string, error) {
-	log.Printf("[INFO] Reading terminal output in the DevWorkspace %s", devWorkspaceName)
-
-	output, err := dw.mcpClient.CallTool(
-		ctx,
-		mcp.ToolReadTerminalOutput,
-		map[string]interface{}{
-			"workspace": devWorkspaceName,
-			"lines":     100,
-		},
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to read terminal output in the DevWorkspace %s: %w", devWorkspaceName, err)
-	}
-
-	var terminalOutput mcp.TerminalOutput
-	if err := json.Unmarshal([]byte(output), &terminalOutput); err != nil {
-		return "", fmt.Errorf("failed to unmarshal terminal output from the DevWorkspace %s: %w", devWorkspaceName, err)
-	}
-
-	return terminalOutput.Output, nil
 }
 
 func (dw *DevWorkspace) RunClaudeTask(ctx context.Context, devWorkspaceName string, task string) error {

@@ -43,7 +43,7 @@ type Config struct {
 	MCPServerURL           string
 	WarnDirsCommits        []string
 	StateFile              string
-	SkillsRepositoryName   string
+	SkillsRepositoryUrl    string
 	SkillsRepositoryBranch string
 }
 
@@ -94,7 +94,7 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	skillsRepositoryName := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_NAME", defaultSkillRepositoryName)
+	skillsRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryName)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
@@ -120,7 +120,7 @@ func Read() (*Config, error) {
 		GitHubToken:            githubToken,
 		WarnDirsCommits:        warnDirsCommits,
 		StateFile:              stateFile,
-		SkillsRepositoryName:   skillsRepositoryName,
+		SkillsRepositoryUrl:    skillsRepositoryUrl,
 		SkillsRepositoryBranch: skillsRepositoryBranch,
 	}, nil
 }

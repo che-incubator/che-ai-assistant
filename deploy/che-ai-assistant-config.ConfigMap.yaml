@@ -19,5 +19,5 @@ data:
   CHE_AI_ASSISTANT_STATE_FILE: '/home/user/che-ai-assistant-state.json'
   CHE_AI_ASSISTANT_PROMPTS_DIR: './prompts'
   CHE_AI_ASSISTANT_WARN_DIRS_COMMITS: '.claude,.vscode'
-  CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_NAME: 'https://github.com/che-incubator/che-ai-assistant-skills'
+  CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL: 'https://github.com/che-incubator/che-ai-assistant-skills'
   CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH: '97487bebf7c85d6f55053d9b8dfd6e41d4b0b1d1'

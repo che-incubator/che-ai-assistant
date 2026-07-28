@@ -58,7 +58,7 @@ All configuration is via environment variables.
 | `CHE_AI_ASSISTANT_GITHUB_REPOSITORIES`            | *required*               | Comma-separated list of repositories to watch (e.g., `eclipse-che/che-server,eclipse-che/che`) |
 | `CHE_AI_ASSISTANT_GITHUB_USERS`                   | *required*               | Comma-separated list of GitHub usernames authorized to trigger commands                        |
 | `CHE_AI_ASSISTANT_MCP_SERVER_URL`                 | *required*               | MCP server URL                                                                                 |
-| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_NAME`   | `https://github.com/che-incubator/che-ai-assistant-skills`               | Repository containing skills for tasks                                                         |
+| `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL`    | `https://github.com/che-incubator/che-ai-assistant-skills`               | Repository containing skills for tasks                                                         |
 | `CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH` | `main`                   | Repository task skills branch name or commit                                                   |
 | `CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL`           | `5m`                     | How often to poll for new comments                                                             |
 | `CHE_AI_ASSISTANT_TASK_TIMEOUT`                   | `30m`                    | Maximum time a task can run                                                                    |

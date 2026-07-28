@@ -57,7 +57,7 @@ func New(serverUrl string) *Client {
 	client := &Client{
 		serverUrl: serverUrl,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 1 * time.Minute,
 		},
 		currentId: atomic.Int32{},
 	}

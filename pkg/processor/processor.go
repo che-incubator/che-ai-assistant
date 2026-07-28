@@ -34,7 +34,7 @@ type TaskProcessor struct {
 	devWorkspace           *devworkspace.DevWorkspace
 	prompts                map[commands.SubCommandType]string
 	taskTimeout            time.Duration
-	skillsRepositoryName   string
+	skillsRepositoryUrl    string
 	skillsRepositoryBranch string
 }
 
@@ -58,7 +58,7 @@ func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
 		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
 		prompts:                prompts,
 		taskTimeout:            cfg.TaskTimeout,
-		skillsRepositoryName:   cfg.SkillsRepositoryName,
+		skillsRepositoryUrl:    cfg.SkillsRepositoryUrl,
 		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
 	}, nil
 }
@@ -106,7 +106,8 @@ func (p *TaskProcessor) processDefault(
 	)
 
 	defer func() {
-		err := p.devWorkspace.Delete(ctx, devWorkspaceName)
+		// Use a new context (not to use canceled context occasionally)
+		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
 		if err != nil {
 			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 		}
@@ -118,8 +119,8 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepositoryName)
-	if !repositoryNamePattern.MatchString(devWorkspaceName) {
+	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepositoryUrl)
+	if !repositoryNamePattern.MatchString(skillsRepositoryName) {
 		p.onError(ctx, devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
 		return
 	}
@@ -129,7 +130,7 @@ func (p *TaskProcessor) processDefault(
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
-		p.skillsRepositoryName,
+		p.skillsRepositoryUrl,
 		p.skillsRepositoryBranch,
 		copyClaudeConfigCommand,
 	)
