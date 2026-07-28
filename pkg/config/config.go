@@ -27,8 +27,9 @@ const (
 	defaultPromptsDir            = "./prompts"
 	defaultWarnDirs              = ".claude,.vscode"
 	defaultLogFile               = "./che-ai-assistant.log"
-	defaultSkillRepositoryName   = "https://github.com/che-incubator/che-ai-assistant-skills"
+	defaultSkillRepositoryUrl    = "https://github.com/che-incubator/che-ai-assistant-skills"
 	defaultSkillRepositoryBranch = "main"
+	defaultMCPServerURL          = "http://che-mcp-server:8080"
 )
 
 type Config struct {
@@ -89,12 +90,9 @@ func Read() (*Config, error) {
 		maxConcurrentTasks = n
 	}
 
-	mcpServerURL, err := requireEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL")
-	if err != nil {
-		return nil, err
-	}
+	mcpServerURL := optionalEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL", defaultMCPServerURL)
 
-	skillsRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryName)
+	skillsRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))

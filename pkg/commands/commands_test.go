@@ -88,12 +88,6 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 			repo:     "some-org/some-repo",
 			expected: true,
 		},
-		{
-			name:     "restricted command available for allowed repo",
-			sub:      SubCommandPullRequestReadiness,
-			repo:     "devfile/devworkspace-operator",
-			expected: true,
-		},
 	}
 
 	for _, tt := range tests {

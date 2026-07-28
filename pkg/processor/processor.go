@@ -43,8 +43,7 @@ const (
 )
 
 var (
-	repositoryNamePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
-	emptyTaskOutputReader = func(ctx context.Context, s string) (string, error) { return "", nil }
+	repositoryNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 )
 
 func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
@@ -105,9 +104,18 @@ func (p *TaskProcessor) processDefault(
 		trigger.IssueNumber,
 	)
 
+	var workspaceStarted bool
+
 	defer func() {
-		// Use a new context (not to use canceled context occasionally)
-		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
+		if !workspaceStarted {
+			return
+		}
+
+		// Use a new context (not to use parent canceled context occasionally)
+		deleteDevWorkspaceCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err := p.devWorkspace.Delete(deleteDevWorkspaceCtx, devWorkspaceName)
 		if err != nil {
 			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 		}
@@ -115,13 +123,13 @@ func (p *TaskProcessor) processDefault(
 
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
 	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepositoryUrl)
 	if !repositoryNamePattern.MatchString(skillsRepositoryName) {
-		p.onError(ctx, devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
+		p.finalizeTask(ctx, devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
 		return
 	}
 
@@ -135,83 +143,34 @@ func (p *TaskProcessor) processDefault(
 		copyClaudeConfigCommand,
 	)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
+	workspaceStarted = true
+
 	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
 	err = p.devWorkspace.RunClaudeTask(ctx, devWorkspaceName, task)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.finalizeTask(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
 	}
 
 	err = p.devWorkspace.WaitTaskFinished(ctx, devWorkspaceName, p.taskTimeout)
 	if err != nil {
-		p.onError(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.finalizeTask(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
 	}
 
-	p.onSuccess(ctx, devWorkspaceName, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+	p.finalizeTask(ctx, devWorkspaceName, nil, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 }
 
-func (p *TaskProcessor) onSuccess(
-	ctx context.Context,
-	devWorkspaceName string,
-	trigger *github.Trigger,
-	readTaskOutput func(context.Context, string) (string, error),
-) {
-	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
-	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
-		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
-	} else {
-		if err := os.WriteFile(outputFile, []byte(output), 0644); err != nil {
-			log.Printf("[ERROR] Failed to write DevWorkspace output to %s: %v", outputFile, err)
-		}
-	}
-
-	var issueOrPR string
-	if trigger.IsIssue {
-		issueOrPR = "issues"
-	} else {
-		issueOrPR = "pull"
-	}
-
-	log.Printf(
-		"[INFO] %s completed for comment https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s",
-		trigger.SubCommandType,
-		trigger.Owner,
-		trigger.Repo,
-		issueOrPR,
-		trigger.IssueNumber,
-		trigger.CommentID,
-		outputFile,
-	)
-
-	body := fmt.Sprintf("%s\n\nTask completed.", trigger.CommentBody)
-	if err := p.githubClient.UpdateComment(
-		ctx,
-		trigger.Owner,
-		trigger.Repo,
-		trigger.CommentID,
-		body,
-	); err != nil {
-		log.Printf(
-			"[ERROR] Failed to post on %s/%s#%d: %v",
-			trigger.Owner,
-			trigger.Repo,
-			trigger.IssueNumber,
-			err,
-		)
-	}
-}
-
-func (p *TaskProcessor) onError(
+func (p *TaskProcessor) finalizeTask(
 	ctx context.Context,
 	devWorkspaceName string,
 	err error,
@@ -234,19 +193,39 @@ func (p *TaskProcessor) onError(
 		issueOrPR = "pull"
 	}
 
-	log.Printf(
-		"[INFO] %s failed for comment https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s, error %v",
-		trigger.SubCommandType,
-		trigger.Owner,
-		trigger.Repo,
-		issueOrPR,
-		trigger.IssueNumber,
-		trigger.CommentID,
-		outputFile,
-		err,
-	)
+	if err == nil {
+		log.Printf(
+			"[INFO] %s completed for https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s",
+			trigger.SubCommandType,
+			trigger.Owner,
+			trigger.Repo,
+			issueOrPR,
+			trigger.IssueNumber,
+			trigger.CommentID,
+			outputFile,
+		)
+	} else {
+		log.Printf(
+			"[INFO] %s failed for https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s, error %v",
+			trigger.SubCommandType,
+			trigger.Owner,
+			trigger.Repo,
+			issueOrPR,
+			trigger.IssueNumber,
+			trigger.CommentID,
+			outputFile,
+			err,
+		)
+	}
 
-	body := fmt.Sprintf("%s\n\nTask failed.", trigger.CommentBody)
+	var comment string
+	if err == nil {
+		comment = "Task completed."
+	} else {
+		comment = "Task failed."
+	}
+
+	body := fmt.Sprintf("%s\n\n%s", comment, trigger.CommentBody)
 	if err := p.githubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
@@ -262,6 +241,7 @@ func (p *TaskProcessor) onError(
 			err,
 		)
 	}
+
 }
 
 func (p *TaskProcessor) processHelp(ctx context.Context, trigger *github.Trigger) {
@@ -345,3 +325,5 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 
 	return prompts, nil
 }
+
+func emptyTaskOutputReader(_ context.Context, _ string) (string, error) { return "", nil }
