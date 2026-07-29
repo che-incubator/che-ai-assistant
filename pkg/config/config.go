@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultPollInterval          = "5m"
+	defaultPollInterval          = "10m"
 	defaultTaskTimeout           = "30m"
 	defaultMaxConcurrentTasks    = 1
 	defaultPromptsDir            = "./prompts"
@@ -92,7 +92,7 @@ func Read() (*Config, error) {
 
 	mcpServerURL := optionalEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL", defaultMCPServerURL)
 
-	SkillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
+	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
@@ -118,7 +118,7 @@ func Read() (*Config, error) {
 		GitHubToken:            githubToken,
 		WarnDirsCommits:        warnDirsCommits,
 		StateFile:              stateFile,
-		SkillsRepositoryURL:    SkillsRepositoryURL,
+		SkillsRepositoryURL:    skillsRepositoryURL,
 		SkillsRepositoryBranch: skillsRepositoryBranch,
 	}, nil
 }

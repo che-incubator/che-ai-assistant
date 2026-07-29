@@ -102,11 +102,7 @@ func (p *TaskProcessor) processDefault(
 			return
 		}
 
-		// Use a new context (not to use parent canceled context occasionally)
-		deleteDevWorkspaceCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		err := p.devWorkspace.Delete(deleteDevWorkspaceCtx, devWorkspaceName)
+		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
 		if err != nil {
 			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
 		}
@@ -168,8 +164,7 @@ func (p *TaskProcessor) finalizeTask(
 	readTaskOutput func(context.Context, string) (string, error),
 ) {
 	// Use a new context (not to use parent canceled context occasionally)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
 	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
