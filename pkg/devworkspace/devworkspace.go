@@ -35,7 +35,7 @@ func NewDevWorkspace(cfg *config.Config) *DevWorkspace {
 func (dw *DevWorkspace) StartFromRepository(
 	ctx context.Context,
 	devWorkspaceName string,
-	repoUrl string,
+	repoURL string,
 	branch string,
 	postStartCommand string,
 ) error {
@@ -47,7 +47,7 @@ func (dw *DevWorkspace) StartFromRepository(
 		map[string]interface{}{
 			"name":               devWorkspaceName,
 			"tools":              []string{"claude-code", "tmux"},
-			"repo_url":           repoUrl,
+			"repo_url":           repoURL,
 			"branch":             branch,
 			"post_start_command": postStartCommand,
 		},

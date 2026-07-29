@@ -27,7 +27,7 @@ const (
 	defaultPromptsDir            = "./prompts"
 	defaultWarnDirs              = ".claude,.vscode"
 	defaultLogFile               = "./che-ai-assistant.log"
-	defaultSkillRepositoryUrl    = "https://github.com/che-incubator/che-ai-assistant-skills"
+	defaultSkillRepositoryURL    = "https://github.com/che-incubator/che-ai-assistant-skills"
 	defaultSkillRepositoryBranch = "main"
 	defaultMCPServerURL          = "http://che-mcp-server:8080/mcp"
 )
@@ -92,7 +92,7 @@ func Read() (*Config, error) {
 
 	mcpServerURL := optionalEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL", defaultMCPServerURL)
 
-	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
+	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryURL)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
