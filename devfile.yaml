@@ -6,13 +6,6 @@ components:
     container:
       image: quay.io/devfile/universal-developer-image:latest
       memoryLimit: 4Gi
-
-projects:
-  - name: che-ai-assistant
-    git:
-      remotes:
-        origin: https://github.com/che-incubator/che-ai-assistant
-
 commands:
   - id: build
     exec:
