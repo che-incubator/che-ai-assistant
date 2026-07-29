@@ -325,6 +325,7 @@ func getDevWorkspaceName(trigger *github.Trigger) string {
 	)
 
 	devWorkspaceName = strings.ToLower(devWorkspaceName)
+	devWorkspaceName = strings.ReplaceAll(devWorkspaceName, ".", "_")
 	if len(devWorkspaceName) > 63 {
 		suffix := fmt.Sprintf("-%d", trigger.IssueNumber)
 		maxPrefix := 63 - len(suffix)
