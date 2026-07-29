@@ -94,14 +94,9 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	var devWorkspaceStarted bool
 	devWorkspaceName := getDevWorkspaceName(trigger)
 
 	defer func() {
-		if !devWorkspaceStarted {
-			return
-		}
-
 		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
 		if err != nil {
 			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
@@ -133,8 +128,6 @@ func (p *TaskProcessor) processDefault(
 		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
-
-	devWorkspaceStarted = true
 
 	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
 	if err != nil {
@@ -215,7 +208,7 @@ func (p *TaskProcessor) finalizeTask(
 	}
 
 	body := fmt.Sprintf("%s\n\n%s", trigger.CommentBody, comment)
-	if err := p.githubClient.UpdateComment(
+	if err = p.githubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
 		trigger.Repo,
@@ -300,7 +293,7 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 
 		data, err := os.ReadFile(filepath.Join(dir, file.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("reading prompts %s: %w", file.Name(), err)
+			return nil, fmt.Errorf("reading prompts file %s: %w", file.Name(), err)
 		}
 
 		content := strings.TrimSpace(string(data))
