@@ -17,7 +17,6 @@ import (
 	"che-incubator/che-ai-assistant/pkg/devworkspace"
 	"che-incubator/che-ai-assistant/pkg/github"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -33,7 +32,7 @@ type TaskProcessor struct {
 	devWorkspace           *devworkspace.DevWorkspace
 	prompts                map[commands.SubCommandType]string
 	taskTimeout            time.Duration
-	SkillsRepositoryURL    string
+	skillsRepositoryURL    string
 	skillsRepositoryBranch string
 }
 
@@ -48,7 +47,7 @@ var (
 func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskProcessor, error) {
 	prompts, err := loadPrompts(cfg.PromptsDir)
 	if err != nil {
-		return nil, errors.Join(fmt.Errorf("failed to load prompts"), err)
+		return nil, fmt.Errorf("failed to load prompts: %w", err)
 	}
 
 	return &TaskProcessor{
@@ -56,7 +55,7 @@ func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskPro
 		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
 		prompts:                prompts,
 		taskTimeout:            cfg.TaskTimeout,
-		SkillsRepositoryURL:    cfg.SkillsRepositoryURL,
+		skillsRepositoryURL:    cfg.SkillsRepositoryURL,
 		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
 	}, nil
 }
@@ -119,7 +118,7 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	_, skillsRepositoryName := github.ParseRepoSlug(p.SkillsRepositoryURL)
+	_, skillsRepositoryName := github.ParseRepoSlug(p.skillsRepositoryURL)
 	if !repositoryNamePattern.MatchString(skillsRepositoryName) {
 		p.finalizeTask(devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
 		return
@@ -130,7 +129,7 @@ func (p *TaskProcessor) processDefault(
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
-		p.SkillsRepositoryURL,
+		p.skillsRepositoryURL,
 		p.skillsRepositoryBranch,
 		copyClaudeConfigCommand,
 	)
@@ -169,7 +168,8 @@ func (p *TaskProcessor) finalizeTask(
 	readTaskOutput func(context.Context, string) (string, error),
 ) {
 	// Use a new context (not to use parent canceled context occasionally)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
 	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
@@ -331,8 +331,9 @@ func getDevWorkspaceName(trigger *github.Trigger) string {
 
 	devWorkspaceName = strings.ToLower(devWorkspaceName)
 	if len(devWorkspaceName) > 63 {
-		devWorkspaceName = devWorkspaceName[:55]
-		devWorkspaceName = fmt.Sprintf("%s-%d", devWorkspaceName, trigger.IssueNumber)
+		suffix := fmt.Sprintf("-%d", trigger.IssueNumber)
+		maxPrefix := 63 - len(suffix)
+		devWorkspaceName = strings.TrimRight(devWorkspaceName[:maxPrefix], "-") + suffix
 	}
 
 	return devWorkspaceName

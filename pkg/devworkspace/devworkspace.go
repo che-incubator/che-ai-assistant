@@ -98,6 +98,9 @@ func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName stri
 				return fmt.Errorf("failed to unmarshal DevWorkspace status %s: %w", devWorkspaceName, err)
 			}
 
+			// reset error counter
+			readClaudeTaskStatusErrorCount = 0
+
 			switch status.Phase {
 			case "Running":
 				return nil
