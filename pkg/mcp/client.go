@@ -28,11 +28,9 @@ const (
 	ToolCreateWorkspace    = "create_workspace"
 	ToolDeleteWorkspace    = "delete_workspace"
 	ToolGetWorkspaceStatus = "get_workspace_status"
-	ToolExecInWorkspace    = "exec_in_workspace"
 	ToolLaunchCodingAgent  = "launch_coding_agent"
 	ToolGetAgentStatus     = "get_agent_status"
 	ToolGetAgentOutput     = "get_agent_output"
-	ToolReadTerminalOutput = "read_terminal_output"
 
 	AgentClaude = "claude-code"
 
@@ -57,7 +55,7 @@ func New(serverUrl string) *Client {
 	client := &Client{
 		serverUrl: serverUrl,
 		httpClient: &http.Client{
-			Timeout: 1 * time.Minute,
+			Timeout: 5 * time.Minute,
 		},
 		currentId: atomic.Int32{},
 	}

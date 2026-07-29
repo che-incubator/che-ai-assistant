@@ -29,7 +29,7 @@ const (
 	defaultLogFile               = "./che-ai-assistant.log"
 	defaultSkillRepositoryUrl    = "https://github.com/che-incubator/che-ai-assistant-skills"
 	defaultSkillRepositoryBranch = "main"
-	defaultMCPServerURL          = "http://che-mcp-server:8080"
+	defaultMCPServerURL          = "http://che-mcp-server:8080/mcp"
 )
 
 type Config struct {
@@ -44,7 +44,7 @@ type Config struct {
 	MCPServerURL           string
 	WarnDirsCommits        []string
 	StateFile              string
-	SkillsRepositoryUrl    string
+	SkillsRepositoryURL    string
 	SkillsRepositoryBranch string
 }
 
@@ -92,7 +92,7 @@ func Read() (*Config, error) {
 
 	mcpServerURL := optionalEnv("CHE_AI_ASSISTANT_MCP_SERVER_URL", defaultMCPServerURL)
 
-	skillsRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
+	SkillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryUrl)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
@@ -118,7 +118,7 @@ func Read() (*Config, error) {
 		GitHubToken:            githubToken,
 		WarnDirsCommits:        warnDirsCommits,
 		StateFile:              stateFile,
-		SkillsRepositoryUrl:    skillsRepositoryUrl,
+		SkillsRepositoryURL:    SkillsRepositoryURL,
 		SkillsRepositoryBranch: skillsRepositoryBranch,
 	}, nil
 }

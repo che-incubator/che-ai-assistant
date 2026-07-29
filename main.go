@@ -13,7 +13,6 @@ package main
 
 import (
 	"che-incubator/che-ai-assistant/pkg/commands"
-	"che-incubator/che-ai-assistant/pkg/common"
 	"che-incubator/che-ai-assistant/pkg/config"
 	"che-incubator/che-ai-assistant/pkg/github"
 	"che-incubator/che-ai-assistant/pkg/processor"
@@ -46,7 +45,7 @@ func main() {
 		log.Fatalf("[ERROR] state.NewStore: %v", err)
 	}
 
-	taskProcessor, err := processor.NewTaskProcessor(cfg)
+	taskProcessor, err := processor.NewTaskProcessor(cfg, ghClient)
 	if err != nil {
 		log.Fatalf("[ERROR] processor.NewTaskProcessor: %v", err)
 	}
@@ -119,7 +118,7 @@ func pollFunc(
 		cleanupClosedEntries(ctx, ghClient, store)
 
 		for _, repositoryUrl := range cfg.GitHubRepositories {
-			owner, repo := common.ParseRepoSlug(repositoryUrl)
+			owner, repo := github.ParseRepoSlug(repositoryUrl)
 			if owner == "" || repo == "" {
 				log.Printf("[ERROR] invalid repo format: %s (expected owner/repo or https://github.com/owner/repo)", repositoryUrl)
 				continue

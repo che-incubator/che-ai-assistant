@@ -13,7 +13,6 @@ package processor
 
 import (
 	"che-incubator/che-ai-assistant/pkg/commands"
-	"che-incubator/che-ai-assistant/pkg/common"
 	"che-incubator/che-ai-assistant/pkg/config"
 	"che-incubator/che-ai-assistant/pkg/devworkspace"
 	"che-incubator/che-ai-assistant/pkg/github"
@@ -34,7 +33,7 @@ type TaskProcessor struct {
 	devWorkspace           *devworkspace.DevWorkspace
 	prompts                map[commands.SubCommandType]string
 	taskTimeout            time.Duration
-	skillsRepositoryUrl    string
+	SkillsRepositoryURL    string
 	skillsRepositoryBranch string
 }
 
@@ -46,18 +45,18 @@ var (
 	repositoryNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 )
 
-func NewTaskProcessor(cfg *config.Config) (*TaskProcessor, error) {
+func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskProcessor, error) {
 	prompts, err := loadPrompts(cfg.PromptsDir)
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to load prompts"), err)
 	}
 
 	return &TaskProcessor{
-		githubClient:           github.NewGitHubClient(cfg),
+		githubClient:           githubClient,
 		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
 		prompts:                prompts,
 		taskTimeout:            cfg.TaskTimeout,
-		skillsRepositoryUrl:    cfg.SkillsRepositoryUrl,
+		SkillsRepositoryURL:    cfg.SkillsRepositoryURL,
 		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
 	}, nil
 }
@@ -96,18 +95,11 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	devWorkspaceName := fmt.Sprintf(
-		"%s-%s-%s-%d",
-		devWorkspaceNamePrefix,
-		trigger.SubCommandType,
-		trigger.Repo,
-		trigger.IssueNumber,
-	)
-
-	var workspaceStarted bool
+	var devWorkspaceStarted bool
+	devWorkspaceName := getDevWorkspaceName(trigger)
 
 	defer func() {
-		if !workspaceStarted {
+		if !devWorkspaceStarted {
 			return
 		}
 
@@ -123,13 +115,13 @@ func (p *TaskProcessor) processDefault(
 
 	task, err := p.buildPrompt(trigger)
 	if err != nil {
-		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
-	_, skillsRepositoryName := common.ParseRepoSlug(p.skillsRepositoryUrl)
+	_, skillsRepositoryName := github.ParseRepoSlug(p.SkillsRepositoryURL)
 	if !repositoryNamePattern.MatchString(skillsRepositoryName) {
-		p.finalizeTask(ctx, devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
+		p.finalizeTask(devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", skillsRepositoryName), trigger, emptyTaskOutputReader)
 		return
 	}
 
@@ -138,45 +130,47 @@ func (p *TaskProcessor) processDefault(
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
-		p.skillsRepositoryUrl,
+		p.SkillsRepositoryURL,
 		p.skillsRepositoryBranch,
 		copyClaudeConfigCommand,
 	)
 	if err != nil {
-		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
-	workspaceStarted = true
+	devWorkspaceStarted = true
 
 	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
 	if err != nil {
-		p.finalizeTask(ctx, devWorkspaceName, err, trigger, emptyTaskOutputReader)
+		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
 		return
 	}
 
 	err = p.devWorkspace.RunClaudeTask(ctx, devWorkspaceName, task)
 	if err != nil {
-		p.finalizeTask(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
 	}
 
 	err = p.devWorkspace.WaitTaskFinished(ctx, devWorkspaceName, p.taskTimeout)
 	if err != nil {
-		p.finalizeTask(ctx, devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
 	}
 
-	p.finalizeTask(ctx, devWorkspaceName, nil, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+	p.finalizeTask(devWorkspaceName, nil, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 }
 
 func (p *TaskProcessor) finalizeTask(
-	ctx context.Context,
 	devWorkspaceName string,
 	err error,
 	trigger *github.Trigger,
 	readTaskOutput func(context.Context, string) (string, error),
 ) {
+	// Use a new context (not to use parent canceled context occasionally)
+	ctx := context.Background()
+
 	outputFile := filepath.Join(os.TempDir(), fmt.Sprintf("workspace-output-%d.txt", time.Now().UnixNano()))
 	if output, err := readTaskOutput(ctx, devWorkspaceName); err != nil {
 		log.Printf("[ERROR] Failed to read the output in the DevWorkspace %s: %v", devWorkspaceName, err)
@@ -206,7 +200,7 @@ func (p *TaskProcessor) finalizeTask(
 		)
 	} else {
 		log.Printf(
-			"[INFO] %s failed for https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s, error %v",
+			"[ERROR] %s failed for https://github.com/%s/%s/%s/%d#issuecomment-%d, output %s, error %v",
 			trigger.SubCommandType,
 			trigger.Owner,
 			trigger.Repo,
@@ -225,7 +219,7 @@ func (p *TaskProcessor) finalizeTask(
 		comment = "Task failed."
 	}
 
-	body := fmt.Sprintf("%s\n\n%s", comment, trigger.CommentBody)
+	body := fmt.Sprintf("%s\n\n%s", trigger.CommentBody, comment)
 	if err := p.githubClient.UpdateComment(
 		ctx,
 		trigger.Owner,
@@ -324,6 +318,24 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 	}
 
 	return prompts, nil
+}
+
+func getDevWorkspaceName(trigger *github.Trigger) string {
+	devWorkspaceName := fmt.Sprintf(
+		"%s-%s-%s-%d",
+		devWorkspaceNamePrefix,
+		trigger.SubCommandType,
+		trigger.Repo,
+		trigger.IssueNumber,
+	)
+
+	devWorkspaceName = strings.ToLower(devWorkspaceName)
+	if len(devWorkspaceName) > 63 {
+		devWorkspaceName = devWorkspaceName[:55]
+		devWorkspaceName = fmt.Sprintf("%s-%d", devWorkspaceName, trigger.IssueNumber)
+	}
+
+	return devWorkspaceName
 }
 
 func emptyTaskOutputReader(_ context.Context, _ string) (string, error) { return "", nil }

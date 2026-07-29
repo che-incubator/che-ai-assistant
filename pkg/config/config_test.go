@@ -48,7 +48,7 @@ func TestParse(t *testing.T) {
 				assert.Equal(t, "/var/log/gen.log", cfg.LogFile)
 				assert.Equal(t, "token", cfg.GitHubToken)
 				assert.Equal(t, "http://che-mcp-server:8080/mcp", cfg.MCPServerURL)
-				assert.Equal(t, "https://repo", cfg.SkillsRepositoryUrl)
+				assert.Equal(t, "https://repo", cfg.SkillsRepositoryURL)
 				assert.Equal(t, "branch", cfg.SkillsRepositoryBranch)
 			},
 		},

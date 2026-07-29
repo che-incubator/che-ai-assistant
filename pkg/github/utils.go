@@ -9,7 +9,7 @@
 //   Red Hat, Inc. - initial API and implementation
 //
 
-package common
+package github
 
 import "regexp"
 

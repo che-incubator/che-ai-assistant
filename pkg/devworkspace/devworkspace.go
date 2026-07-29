@@ -62,9 +62,13 @@ func (dw *DevWorkspace) StartFromRepository(
 func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout time.Duration) error {
 	log.Printf("[INFO] Ensuring the DevWorkspace %s is running", devWorkspaceName)
 
+	maxReadClaudeTaskStatusErrorsNumber := 3
+	readClaudeTaskStatusErrorCount := 0
+
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// Adds 10 seconds delay for workspace starting before checking
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -81,7 +85,12 @@ func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName stri
 				},
 			)
 			if err != nil {
-				return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
+				readClaudeTaskStatusErrorCount++
+				if readClaudeTaskStatusErrorCount >= maxReadClaudeTaskStatusErrorsNumber {
+					return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
+				}
+
+				continue
 			}
 
 			var status mcp.WorkspaceStatus
@@ -146,11 +155,11 @@ func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName s
 				continue
 			}
 
-			// reset error counter
-			readClaudeTaskStatusErrorCount = 0
-
 			switch status {
 			case mcp.ClaudeStatusRunning:
+				// reset error counter
+				readClaudeTaskStatusErrorCount = 0
+
 				continue
 			case mcp.ClaudeStatusFinished:
 				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
