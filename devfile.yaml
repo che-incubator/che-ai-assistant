@@ -1,0 +1,32 @@
+schemaVersion: 2.3.0
+metadata:
+  name: che-ai-assistant
+components:
+  - name: tools
+    container:
+      image: quay.io/devfile/universal-developer-image:latest
+      memoryLimit: 1Gi
+commands:
+  - id: build
+    exec:
+      label: Build project
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: make build
+      group:
+        kind: build
+        isDefault: true
+  - id: start
+    exec:
+      label: Start application
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: "./che-ai-assistant &"
+      group:
+        kind: run
+        isDefault: true
+
+events:
+  postStart:
+    - build
+    - start

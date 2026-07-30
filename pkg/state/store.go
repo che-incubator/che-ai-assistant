@@ -31,22 +31,29 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Entry struct {
 	CommentIDs []int64 `json:"comment_ids"`
 }
 
-type Store struct {
-	mu       sync.Mutex
-	filePath string
-	entries  map[string]*Entry
+type stateData struct {
+	StartTime *time.Time        `json:"start_time,omitempty"`
+	Entries   map[string]*Entry `json:"entries"`
 }
 
-func NewStore(filePath string) (*Store, error) {
+type Store struct {
+	mu        sync.Mutex
+	stateFile string
+	startTime *time.Time
+	entries   map[string]*Entry
+}
+
+func NewStore(stateFile string) (*Store, error) {
 	s := &Store{
-		filePath: filePath,
-		entries:  make(map[string]*Entry),
+		stateFile: stateFile,
+		entries:   make(map[string]*Entry),
 	}
 
 	if err := s.load(); err != nil {
@@ -54,6 +61,13 @@ func NewStore(filePath string) (*Store, error) {
 	}
 
 	return s, nil
+}
+
+func (s *Store) GetStartTime() *time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.startTime
 }
 
 func (s *Store) IsProcessed(owner, repo string, number int, commentID int64) bool {
@@ -145,9 +159,11 @@ func makeKey(owner, repo string, number int) string {
 }
 
 func (s *Store) load() error {
-	data, err := os.ReadFile(s.filePath)
+	data, err := os.ReadFile(s.stateFile)
 	if os.IsNotExist(err) {
-		return nil
+		now := time.Now().UTC()
+		s.startTime = &now
+		return s.save()
 	}
 	if err != nil {
 		return fmt.Errorf("reading state file: %w", err)
@@ -158,16 +174,30 @@ func (s *Store) load() error {
 		return nil
 	}
 
-	return json.Unmarshal(data, &s.entries)
+	var sd stateData
+	if err := json.Unmarshal(data, &sd); err != nil {
+		return err
+	}
+
+	s.startTime = sd.StartTime
+	if sd.Entries != nil {
+		s.entries = sd.Entries
+	}
+
+	return nil
 }
 
 func (s *Store) save() error {
-	data, err := json.MarshalIndent(s.entries, "", "  ")
+	sd := stateData{
+		StartTime: s.startTime,
+		Entries:   s.entries,
+	}
+	data, err := json.MarshalIndent(sd, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling state: %w", err)
 	}
 
-	dir := filepath.Dir(s.filePath)
+	dir := filepath.Dir(s.stateFile)
 	tmp, err := os.CreateTemp(dir, "state-*.json")
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
@@ -190,7 +220,7 @@ func (s *Store) save() error {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 
-	if err := os.Rename(tmp.Name(), s.filePath); err != nil {
+	if err := os.Rename(tmp.Name(), s.stateFile); err != nil {
 		if rerr := os.Remove(tmp.Name()); rerr != nil {
 			log.Printf("[WARN] Failed to remove temp file %s: %v", tmp.Name(), rerr)
 		}

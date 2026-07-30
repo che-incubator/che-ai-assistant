@@ -37,9 +37,9 @@ type Trigger struct {
 }
 
 type Client struct {
-	client       *github.Client
-	allowedUsers []string
-	pollInterval time.Duration
+	client             *github.Client
+	githubUsers        []string
+	githubPollInterval time.Duration
 }
 
 const (
@@ -52,9 +52,9 @@ func NewGitHubClient(cfg *config.Config) *Client {
 	client := github.NewClient(httpClient)
 
 	return &Client{
-		client:       client,
-		allowedUsers: cfg.GitHubAllowedUsers,
-		pollInterval: cfg.TasksPollInterval,
+		client:             client,
+		githubUsers:        cfg.GitHubUsers,
+		githubPollInterval: cfg.GitHubPollInterval,
 	}
 }
 
@@ -66,12 +66,17 @@ func (g *Client) FindTriggerComment(
 	issueURL string,
 	owner, repo string,
 	isProcessed func(commentID int64) bool,
+	startTime *time.Time,
 ) (*Trigger, error) {
 	for i := len(comments) - 1; i >= 0; i-- {
 		comment := comments[i]
 
 		ok, subCommand, args := commands.Parse(comment.GetBody())
 		if !ok {
+			continue
+		}
+
+		if startTime != nil && comment.GetCreatedAt().Before(*startTime) {
 			continue
 		}
 
@@ -184,9 +189,9 @@ func (g *Client) PostWelcomeComment(
 ) error {
 	var welcomeMessage string
 	if isIssue {
-		welcomeMessage = commands.BuildIssueWelcomeMessage(owner+"/"+repo, g.pollInterval)
+		welcomeMessage = commands.BuildIssueWelcomeMessage(owner+"/"+repo, g.githubPollInterval)
 	} else {
-		welcomeMessage = commands.BuildPRWelcomeMessage(owner+"/"+repo, g.pollInterval)
+		welcomeMessage = commands.BuildPRWelcomeMessage(owner+"/"+repo, g.githubPollInterval)
 	}
 
 	_, err := g.CreateComment(
@@ -201,15 +206,15 @@ func (g *Client) PostWelcomeComment(
 }
 
 func (g *Client) IsPullRequestAuthorEligible(pullRequest *github.PullRequest) bool {
-	return slices.Contains(g.allowedUsers, pullRequest.GetUser().GetLogin())
+	return slices.Contains(g.githubUsers, pullRequest.GetUser().GetLogin())
 }
 
 func (g *Client) IsIssueAuthorEligible(issue *github.Issue) bool {
-	return slices.Contains(g.allowedUsers, issue.GetUser().GetLogin())
+	return slices.Contains(g.githubUsers, issue.GetUser().GetLogin())
 }
 
 func (g *Client) IsCommentAuthorEligible(comment *github.IssueComment) bool {
-	return slices.Contains(g.allowedUsers, comment.GetUser().GetLogin())
+	return slices.Contains(g.githubUsers, comment.GetUser().GetLogin())
 }
 
 func isEditedComment(comment *github.IssueComment) bool {
@@ -227,12 +232,6 @@ func (g *Client) HasWelcomeComment(comments []*github.IssueComment) bool {
 func (g *Client) HasWarningComment(comments []*github.IssueComment) bool {
 	return slices.ContainsFunc(comments, func(c *github.IssueComment) bool {
 		return strings.Contains(c.GetBody(), commands.WarningMarker)
-	})
-}
-
-func (g *Client) HasAutoTriggerComment(comments []*github.IssueComment, marker string) bool {
-	return slices.ContainsFunc(comments, func(c *github.IssueComment) bool {
-		return strings.Contains(c.GetBody(), marker)
 	})
 }
 

@@ -12,7 +12,6 @@
 package commands
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -27,9 +26,6 @@ const (
 	WelcomeMarker = "<!-- che-ai-assistant-welcome -->"
 	WarningMarker = "<!-- che-ai-assistant:file-warning -->"
 
-	AutoTriggerMarkerPrefix = "<!-- che-ai-assistant:auto-trigger:"
-	AutoTriggerMarkerFmt    = AutoTriggerMarkerPrefix + "%s -->"
-
 	SubCommandGenerateCheDoc       SubCommandType = "generate-che-doc"
 	SubCommandPullRequestReview    SubCommandType = "ok-pr-review"
 	SubCommandPullRequestReadiness SubCommandType = "ok-pr-readiness"
@@ -43,7 +39,6 @@ type SubCommand struct {
 	Type         SubCommandType
 	Description  string
 	AllowedRepos []string
-	AutoTrigger  bool
 	IssueOnly    bool
 }
 
@@ -60,10 +55,8 @@ var (
 			Description: "Run a comprehensive PR review (summary, code review, deep review, impact analysis)",
 		},
 		{
-			Type:         SubCommandPullRequestReadiness,
-			Description:  "Ensure PR has validation steps",
-			AllowedRepos: []string{"devfile/devworkspace-operator"},
-			AutoTrigger:  true,
+			Type:        SubCommandPullRequestReadiness,
+			Description: "Ensure PR has validation steps",
 		},
 		{
 			Type:        SubCommandCheckPRTestFailures,
@@ -165,18 +158,6 @@ func Parse(body string) (bool, SubCommandType, string) {
 	}
 
 	return true, SubCommandType(sub), args
-}
-
-func AutoTriggerMarker(sub SubCommandType) string {
-	return fmt.Sprintf(AutoTriggerMarkerFmt, sub)
-}
-
-func BuildAutoTriggerComment(sub SubCommandType) string {
-	return fmt.Sprintf("%s %s\n%s", Command, sub, AutoTriggerMarker(sub))
-}
-
-func IsAutoTriggerComment(body string) bool {
-	return strings.Contains(body, AutoTriggerMarkerPrefix)
 }
 
 func IsIssueOnlyCommand(sub SubCommandType) bool {

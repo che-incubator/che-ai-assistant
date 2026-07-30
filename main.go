@@ -22,16 +22,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"regexp"
 	"sync"
 	"syscall"
 	"time"
-
-	gh "github.com/google/go-github/v68/github"
-)
-
-var (
-	githubRepository = regexp.MustCompile(`^(?:https?://[^/]+/)?([^/]+)/([^/]+?)(?:\.git)?$`)
 )
 
 func main() {
@@ -47,17 +40,17 @@ func main() {
 
 	ghClient := github.NewGitHubClient(cfg)
 
-	store, err := state.NewStore(cfg.StatePath)
+	store, err := state.NewStore(cfg.StateFile)
 	if err != nil {
 		log.Fatalf("[ERROR] state.NewStore: %v", err)
 	}
 
-	taskProcessor, err := processor.NewTaskProcessor(cfg)
+	taskProcessor, err := processor.NewTaskProcessor(cfg, ghClient)
 	if err != nil {
 		log.Fatalf("[ERROR] processor.NewTaskProcessor: %v", err)
 	}
 
-	log.Printf("[INFO] starting che-ai-assistant: watching %v, poll every %v", cfg.GitHubWatchRepos, cfg.TasksPollInterval)
+	log.Printf("[INFO] starting che-ai-assistant: repositories %v, poll every %v", cfg.GitHubRepositories, cfg.GitHubPollInterval)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +62,7 @@ func main() {
 
 	poll := pollFunc(ctx, &wg, cfg, ghClient, taskProcessor, store)
 
-	ticker := time.NewTicker(cfg.TasksPollInterval)
+	ticker := time.NewTicker(cfg.GitHubPollInterval)
 	defer ticker.Stop()
 
 	poll()
@@ -124,15 +117,15 @@ func pollFunc(
 	return func() {
 		cleanupClosedEntries(ctx, ghClient, store)
 
-		for _, repositoryUrl := range cfg.GitHubWatchRepos {
-			owner, repo := parseRepoSlug(repositoryUrl)
+		for _, repositoryUrl := range cfg.GitHubRepositories {
+			owner, repo := github.ParseRepoSlug(repositoryUrl)
 			if owner == "" || repo == "" {
 				log.Printf("[ERROR] invalid repo format: %s (expected owner/repo or https://github.com/owner/repo)", repositoryUrl)
 				continue
 			}
 
-			pollPullRequests(ctx, owner, repo, cfg, ghClient, store, dispatchTrigger)
-			pollIssues(ctx, owner, repo, ghClient, store, dispatchTrigger)
+			pollPullRequests(ctx, owner, repo, cfg, ghClient, store, dispatchTrigger, store.GetStartTime())
+			pollIssues(ctx, owner, repo, ghClient, store, dispatchTrigger, store.GetStartTime())
 		}
 	}
 }
@@ -144,6 +137,7 @@ func pollPullRequests(
 	ghClient *github.Client,
 	store *state.Store,
 	dispatchTrigger func(*github.Trigger),
+	startTime *time.Time,
 ) {
 	pullRequests, err := ghClient.GetPullRequests(ctx, owner, repo)
 	if err != nil {
@@ -201,15 +195,11 @@ func pollPullRequests(
 			owner,
 			repo,
 			isProcessed,
+			startTime,
 		)
 		if err != nil {
 			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, prURL)
 			continue
-		}
-
-		// check auto trigger
-		if trigger == nil && !pullRequest.GetDraft() {
-			trigger = postAutoTrigger(ctx, owner, repo, ghClient, comments, pullRequest)
 		}
 
 		if trigger != nil {
@@ -234,6 +224,7 @@ func pollIssues(
 	ghClient *github.Client,
 	store *state.Store,
 	dispatchTrigger func(*github.Trigger),
+	startTime *time.Time,
 ) {
 	issues, err := ghClient.GetIssuesWithLabel(ctx, owner, repo, "che-ai-assistant")
 	if err != nil {
@@ -273,6 +264,7 @@ func pollIssues(
 			owner,
 			repo,
 			isProcessed,
+			startTime,
 		)
 		if err != nil {
 			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, issueURL)
@@ -300,63 +292,6 @@ func pollIssues(
 	}
 }
 
-func postAutoTrigger(
-	ctx context.Context,
-	owner string,
-	repo string,
-	ghClient *github.Client,
-	comments []*gh.IssueComment,
-	pullRequest *gh.PullRequest,
-) *github.Trigger {
-	repoFullName := owner + "/" + repo
-	for _, subCommand := range commands.SubCommands {
-		if !subCommand.AutoTrigger {
-			continue
-		}
-
-		if !commands.IsCommandAvailableForRepo(subCommand.Type, repoFullName) {
-			continue
-		}
-
-		marker := commands.AutoTriggerMarker(subCommand.Type)
-		if ghClient.HasAutoTriggerComment(comments, marker) {
-			continue
-		}
-
-		prURL := pullRequest.GetHTMLURL()
-
-		passed, err := ghClient.AreCheckRunsPassed(ctx, owner, repo, pullRequest.GetHead().GetSHA())
-		if err != nil {
-			log.Printf("[ERROR] failed to check CI status: %v, %s", err, prURL)
-			continue
-		}
-		if !passed {
-			continue
-		}
-
-		log.Printf("[INFO] auto-triggering %s on %s", subCommand.Type, prURL)
-
-		comment, err := ghClient.CreateComment(ctx, owner, repo, pullRequest.GetNumber(), commands.BuildAutoTriggerComment(subCommand.Type))
-		if err != nil {
-			log.Printf("[ERROR] failed to post auto-trigger comment: %v, %s", err, prURL)
-			continue
-		}
-
-		return &github.Trigger{
-			Owner:          owner,
-			Repo:           repo,
-			CommentID:      comment.GetID(),
-			IsIssue:        false,
-			IssueNumber:    pullRequest.GetNumber(),
-			IssueURL:       pullRequest.GetHTMLURL(),
-			CommentBody:    comment.GetBody(),
-			SubCommandType: subCommand.Type,
-		}
-	}
-
-	return nil
-}
-
 func cleanupClosedEntries(ctx context.Context, ghClient *github.Client, store *state.Store) {
 	for _, key := range store.GetOpenKeys() {
 		owner, repo, number, err := state.ParseKey(key)
@@ -381,13 +316,4 @@ func cleanupClosedEntries(ctx context.Context, ghClient *github.Client, store *s
 			}
 		}
 	}
-}
-
-func parseRepoSlug(repo string) (owner, name string) {
-	m := githubRepository.FindStringSubmatch(repo)
-	if m == nil {
-		return "", ""
-	}
-
-	return m[1], m[2]
 }

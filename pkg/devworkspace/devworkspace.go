@@ -32,7 +32,13 @@ func NewDevWorkspace(cfg *config.Config) *DevWorkspace {
 	}
 }
 
-func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string, postStartCommand string) error {
+func (dw *DevWorkspace) StartFromRepository(
+	ctx context.Context,
+	devWorkspaceName string,
+	repoURL string,
+	branch string,
+	postStartCommand string,
+) error {
 	log.Printf("[INFO] Starting the DevWorkspace %s", devWorkspaceName)
 
 	_, err := dw.mcpClient.CallTool(
@@ -41,6 +47,8 @@ func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string, post
 		map[string]interface{}{
 			"name":               devWorkspaceName,
 			"tools":              []string{"claude-code", "tmux"},
+			"repo_url":           repoURL,
+			"branch":             branch,
 			"post_start_command": postStartCommand,
 		},
 	)
@@ -51,42 +59,57 @@ func (dw *DevWorkspace) Start(ctx context.Context, devWorkspaceName string, post
 	return nil
 }
 
-func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout int) error {
+func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName string, timeout time.Duration) error {
 	log.Printf("[INFO] Ensuring the DevWorkspace %s is running", devWorkspaceName)
 
-	deadline := time.Now().Add(time.Duration(timeout) * time.Minute)
+	maxReadClaudeTaskStatusErrorsNumber := 3
+	readClaudeTaskStatusErrorCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Adds 10 seconds delay for workspace starting before checking
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
 	for {
-		output, err := dw.mcpClient.CallTool(
-			ctx,
-			mcp.ToolGetWorkspaceStatus,
-			map[string]interface{}{
-				"workspace": devWorkspaceName,
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
-		}
-
-		var status mcp.WorkspaceStatus
-		if err := json.Unmarshal([]byte(output), &status); err != nil {
-			return fmt.Errorf("failed to unmarshal DevWorkspace status %s: %w", devWorkspaceName, err)
-		}
-
-		switch status.Phase {
-		case "Running":
-			return nil
-		case "Failed":
-			return fmt.Errorf("DevWorkspace %s failed to start", devWorkspaceName)
-		case "Stopped":
-			return fmt.Errorf("DevWorkspace %s stopped", devWorkspaceName)
-		}
-
-		if time.Now().After(deadline) {
+		select {
+		case <-ctx.Done():
 			return fmt.Errorf("timed out waiting for DevWorkspace %s to reach Running state", devWorkspaceName)
-		}
+		case <-ticker.C:
+			output, err := dw.mcpClient.CallTool(
+				ctx,
+				mcp.ToolGetWorkspaceStatus,
+				map[string]interface{}{
+					"workspace": devWorkspaceName,
+				},
+			)
+			if err != nil {
+				readClaudeTaskStatusErrorCount++
+				if readClaudeTaskStatusErrorCount >= maxReadClaudeTaskStatusErrorsNumber {
+					return fmt.Errorf("failed to get DevWorkspace status %s: %w", devWorkspaceName, err)
+				}
 
-		time.Sleep(10 * time.Second)
+				continue
+			}
+
+			var status mcp.WorkspaceStatus
+			if err := json.Unmarshal([]byte(output), &status); err != nil {
+				return fmt.Errorf("failed to unmarshal DevWorkspace status %s: %w", devWorkspaceName, err)
+			}
+
+			// reset error counter
+			readClaudeTaskStatusErrorCount = 0
+
+			switch status.Phase {
+			case "Running":
+				return nil
+			case "Failed":
+				return fmt.Errorf("DevWorkspace %s failed to start", devWorkspaceName)
+			case "Stopped":
+				return fmt.Errorf("DevWorkspace %s stopped", devWorkspaceName)
+			}
+		}
 	}
 }
 
@@ -131,10 +154,15 @@ func (dw *DevWorkspace) WaitTaskFinished(ctx context.Context, devWorkspaceName s
 				if readClaudeTaskStatusErrorCount >= maxReadClaudeTaskStatusErrorsNumber {
 					return errors.Join(fmt.Errorf("failed to read task status in the DevWorkspace %s", devWorkspaceName), err)
 				}
+
+				continue
 			}
 
 			switch status {
 			case mcp.ClaudeStatusRunning:
+				// reset error counter
+				readClaudeTaskStatusErrorCount = 0
+
 				continue
 			case mcp.ClaudeStatusFinished:
 				log.Printf("[INFO] Task finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
@@ -190,29 +218,6 @@ func (dw *DevWorkspace) ReadWorkspaceAgentOutput(ctx context.Context, devWorkspa
 	}
 
 	return taskOutput.Output, nil
-}
-
-func (dw *DevWorkspace) ReadTerminalOutput(ctx context.Context, devWorkspaceName string) (string, error) {
-	log.Printf("[INFO] Reading terminal output in the DevWorkspace %s", devWorkspaceName)
-
-	output, err := dw.mcpClient.CallTool(
-		ctx,
-		mcp.ToolReadTerminalOutput,
-		map[string]interface{}{
-			"workspace": devWorkspaceName,
-			"lines":     100,
-		},
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to read terminal output in the DevWorkspace %s: %w", devWorkspaceName, err)
-	}
-
-	var terminalOutput mcp.TerminalOutput
-	if err := json.Unmarshal([]byte(output), &terminalOutput); err != nil {
-		return "", fmt.Errorf("failed to unmarshal terminal output from the DevWorkspace %s: %w", devWorkspaceName, err)
-	}
-
-	return terminalOutput.Output, nil
 }
 
 func (dw *DevWorkspace) RunClaudeTask(ctx context.Context, devWorkspaceName string, task string) error {
