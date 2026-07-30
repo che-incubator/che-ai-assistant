@@ -45,13 +45,13 @@ func TestGetDevWorkspaceName(t *testing.T) {
 			expected: "che-ai-ok-pr-review-my-repo-1",
 		},
 		{
-			name: "dots replaced with underscores",
+			name: "dots replaced",
 			trigger: &github.Trigger{
 				SubCommandType: commands.SubCommandClaude,
 				Repo:           "my.dotted.repo",
 				IssueNumber:    7,
 			},
-			expected: "che-ai-claude-my_dotted_repo-7",
+			expected: "che-ai-claude-my-dotted-repo-7",
 		},
 		{
 			name: "name truncated to 63 characters",
