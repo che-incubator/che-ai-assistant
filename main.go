@@ -124,8 +124,8 @@ func pollFunc(
 				continue
 			}
 
-			pollPullRequests(ctx, owner, repo, cfg, ghClient, store, dispatchTrigger)
-			pollIssues(ctx, owner, repo, ghClient, store, dispatchTrigger)
+			pollPullRequests(ctx, owner, repo, cfg, ghClient, store, dispatchTrigger, store.GetStartTime())
+			pollIssues(ctx, owner, repo, ghClient, store, dispatchTrigger, store.GetStartTime())
 		}
 	}
 }
@@ -137,6 +137,7 @@ func pollPullRequests(
 	ghClient *github.Client,
 	store *state.Store,
 	dispatchTrigger func(*github.Trigger),
+	startTime *time.Time,
 ) {
 	pullRequests, err := ghClient.GetPullRequests(ctx, owner, repo)
 	if err != nil {
@@ -194,6 +195,7 @@ func pollPullRequests(
 			owner,
 			repo,
 			isProcessed,
+			startTime,
 		)
 		if err != nil {
 			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, prURL)
@@ -222,6 +224,7 @@ func pollIssues(
 	ghClient *github.Client,
 	store *state.Store,
 	dispatchTrigger func(*github.Trigger),
+	startTime *time.Time,
 ) {
 	issues, err := ghClient.GetIssuesWithLabel(ctx, owner, repo, "che-ai-assistant")
 	if err != nil {
@@ -261,6 +264,7 @@ func pollIssues(
 			owner,
 			repo,
 			isProcessed,
+			startTime,
 		)
 		if err != nil {
 			log.Printf("[ERROR] failed to find trigger comment: %v, %s", err, issueURL)

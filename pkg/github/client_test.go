@@ -65,7 +65,7 @@ func TestFindTriggerComment_FindsUnprocessed(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "https://github.com/org/repo/pull/1", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "https://github.com/org/repo/pull/1", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestFindTriggerComment_ParsesSubcommand(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestFindTriggerComment_SkipsProcessed(t *testing.T) {
 
 	alwaysProcessed := func(_ int64) bool { return true }
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", alwaysProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", alwaysProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestFindTriggerComment_SkipsUnauthorizedUser(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -371,7 +371,7 @@ func TestFindTriggerComment_SkipsEditedClaudeComment(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestFindTriggerComment_AllowsNonEditedClaudeComment(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -422,7 +422,7 @@ func TestFindTriggerComment_AllowsEditedNonClaudeComment(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -442,7 +442,7 @@ func TestFindTriggerComment_SkipsPROnlyCommandForIssue(t *testing.T) {
 		},
 	}
 
-	trigger, err := client.FindTriggerComment(context.Background(), comments, true, 42, "https://github.com/org/repo/issues/42", "org", "repo", neverProcessed)
+	trigger, err := client.FindTriggerComment(context.Background(), comments, true, 42, "https://github.com/org/repo/issues/42", "org", "repo", neverProcessed, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -492,5 +492,55 @@ func TestGetPullRequestFiles(t *testing.T) {
 	}
 	if callCount != 2 {
 		t.Errorf("expected 2 API calls (pagination), got %d", callCount)
+	}
+}
+
+func TestFindTriggerComment_SkipsCommentsBeforeStartTime(t *testing.T) {
+	srv := noReactionsServer(t)
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	startTime := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	before := time.Date(2026, 7, 29, 11, 0, 0, 0, time.UTC)
+
+	comments := []*gh.IssueComment{
+		{
+			ID:        gh.Ptr(int64(100)),
+			Body:      gh.Ptr("/che-ai-assistant generate-che-doc"),
+			User:      &gh.User{Login: gh.Ptr("alice")},
+			CreatedAt: &gh.Timestamp{Time: before},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, &startTime)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger != nil {
+		t.Fatalf("expected nil trigger (comment before start time), got %+v", trigger)
+	}
+}
+
+func TestFindTriggerComment_AllowsCommentsAfterStartTime(t *testing.T) {
+	srv := noReactionsServer(t)
+	client := newTestClient([]string{"alice"}, srv.URL)
+
+	startTime := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	after := time.Date(2026, 7, 29, 13, 0, 0, 0, time.UTC)
+
+	comments := []*gh.IssueComment{
+		{
+			ID:        gh.Ptr(int64(100)),
+			Body:      gh.Ptr("/che-ai-assistant generate-che-doc"),
+			User:      &gh.User{Login: gh.Ptr("alice")},
+			CreatedAt: &gh.Timestamp{Time: after},
+		},
+	}
+
+	trigger, err := client.FindTriggerComment(context.Background(), comments, false, 1, "", "org", "repo", neverProcessed, &startTime)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if trigger == nil {
+		t.Fatal("expected a trigger for comment after start time, got nil")
 	}
 }

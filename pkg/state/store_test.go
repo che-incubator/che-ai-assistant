@@ -12,9 +12,11 @@
 package state
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +45,7 @@ func TestNewStore_ExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.json")
 
-	data := `{"owner/repo#42":{"comment_ids":[111,222]}}`
+	data := `{"entries":{"owner/repo#42":{"comment_ids":[111,222]}}}`
 	err := os.WriteFile(path, []byte(data), 0644)
 	require.NoError(t, err)
 
@@ -205,4 +207,77 @@ func TestDifferentPRsAreIndependent(t *testing.T) {
 	assert.True(t, store.IsProcessed("owner", "repo", 1, 100))
 	assert.False(t, store.IsProcessed("owner", "repo", 2, 100))
 	assert.False(t, store.IsProcessed("owner", "other-repo", 1, 100))
+}
+
+func TestNewStore_SetsStartTimeWhenFileDoesNotExist(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+
+	before := time.Now().UTC()
+	store, err := NewStore(path)
+	after := time.Now().UTC()
+	require.NoError(t, err)
+
+	st := store.GetStartTime()
+	require.NotNil(t, st)
+	assert.False(t, st.Before(before))
+	assert.False(t, st.After(after))
+
+	_, err = os.Stat(path)
+	require.NoError(t, err, "state file should be created on fresh start")
+}
+
+func TestNewStore_PersistsStartTime(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+
+	store1, err := NewStore(path)
+	require.NoError(t, err)
+	st1 := store1.GetStartTime()
+	require.NotNil(t, st1)
+
+	store2, err := NewStore(path)
+	require.NoError(t, err)
+	st2 := store2.GetStartTime()
+	require.NotNil(t, st2)
+
+	assert.True(t, st1.Equal(*st2), "start time should be preserved across loads")
+}
+
+func TestNewStore_ExistingFileWithStartTime(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+
+	original := time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC)
+	sd := stateData{
+		StartTime: &original,
+		Entries: map[string]*Entry{
+			"owner/repo#1": {CommentIDs: []int64{100}},
+		},
+	}
+	data, err := json.Marshal(sd)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, data, 0644))
+
+	store, err := NewStore(path)
+	require.NoError(t, err)
+
+	st := store.GetStartTime()
+	require.NotNil(t, st)
+	assert.True(t, st.Equal(original), "should preserve original start time")
+	assert.True(t, store.IsProcessed("owner", "repo", 1, 100))
+}
+
+func TestNewStore_ExistingFileWithoutStartTime(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+
+	data := `{"entries":{"owner/repo#1":{"comment_ids":[100]}}}`
+	require.NoError(t, os.WriteFile(path, []byte(data), 0644))
+
+	store, err := NewStore(path)
+	require.NoError(t, err)
+
+	assert.Nil(t, store.GetStartTime(), "should not set start time for existing file without one")
+	assert.True(t, store.IsProcessed("owner", "repo", 1, 100))
 }

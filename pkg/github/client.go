@@ -66,12 +66,17 @@ func (g *Client) FindTriggerComment(
 	issueURL string,
 	owner, repo string,
 	isProcessed func(commentID int64) bool,
+	startTime *time.Time,
 ) (*Trigger, error) {
 	for i := len(comments) - 1; i >= 0; i-- {
 		comment := comments[i]
 
 		ok, subCommand, args := commands.Parse(comment.GetBody())
 		if !ok {
+			continue
+		}
+
+		if startTime != nil && comment.GetCreatedAt().Before(*startTime) {
 			continue
 		}
 
