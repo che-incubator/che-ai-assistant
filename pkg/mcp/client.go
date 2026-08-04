@@ -31,6 +31,7 @@ const (
 	ToolLaunchCodingAgent  = "launch_coding_agent"
 	ToolGetAgentStatus     = "get_agent_status"
 	ToolGetAgentOutput     = "get_agent_output"
+	ToolExecInWorkspace    = "exec_in_workspace"
 
 	AgentClaude = "claude-code"
 

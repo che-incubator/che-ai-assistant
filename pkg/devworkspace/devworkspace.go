@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -111,6 +112,25 @@ func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName stri
 			}
 		}
 	}
+}
+
+func (dw *DevWorkspace) Exec(ctx context.Context, devWorkspaceName string, command string, timeout int) error {
+	log.Printf("[INFO] Executing command '%s...' in the DevWorkspace %s", command[0:10], devWorkspaceName)
+
+	_, err := dw.mcpClient.CallTool(
+		ctx,
+		mcp.ToolExecInWorkspace,
+		map[string]interface{}{
+			"workspace":       devWorkspaceName,
+			"command":         command,
+			"timeout_seconds": timeout,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to exec in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	return nil
 }
 
 func (dw *DevWorkspace) Delete(ctx context.Context, devWorkspaceName string) error {
@@ -218,6 +238,96 @@ func (dw *DevWorkspace) ReadWorkspaceAgentOutput(ctx context.Context, devWorkspa
 	}
 
 	return taskOutput.Output, nil
+}
+
+func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspaceName string) error {
+	maxErrors := 3
+	errorCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, 12*time.Hour)
+	defer cancel()
+
+	start := time.Now()
+
+	ticker := time.NewTicker(30 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for supervisor to finish in the DevWorkspace %s", devWorkspaceName)
+		case <-ticker.C:
+			log.Printf("[INFO] Waiting for supervisor to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
+
+			exists, err := dw.checkFileExists(ctx, devWorkspaceName, "/projects/supervisor-terminal/morning-report.md")
+			if err != nil {
+				errorCount++
+				if errorCount >= maxErrors {
+					return errors.Join(fmt.Errorf("failed to check supervisor status in the DevWorkspace %s", devWorkspaceName), err)
+				}
+				continue
+			}
+
+			if exists {
+				log.Printf("[INFO] Supervisor finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
+				return nil
+			}
+		}
+	}
+}
+
+func (dw *DevWorkspace) checkFileExists(ctx context.Context, devWorkspaceName string, filePath string) (bool, error) {
+	output, err := dw.mcpClient.CallTool(
+		ctx,
+		mcp.ToolExecInWorkspace,
+		map[string]interface{}{
+			"workspace":       devWorkspaceName,
+			"command":         fmt.Sprintf("test -f %s && echo true || echo false", filePath),
+			"timeout_seconds": 5,
+		},
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to check file existence in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	var execResult mcp.ExecResult
+	if err := json.Unmarshal([]byte(output), &execResult); err != nil {
+		return false, fmt.Errorf("failed to unmarshal exec result from the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	lines := strings.Split(execResult.Output, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			return line == "true", nil
+		}
+	}
+
+	return false, nil
+}
+
+func (dw *DevWorkspace) ReadSupervisorReport(ctx context.Context, devWorkspaceName string) (string, error) {
+	log.Printf("[INFO] Reading supervisor report in the DevWorkspace %s", devWorkspaceName)
+
+	output, err := dw.mcpClient.CallTool(
+		ctx,
+		mcp.ToolExecInWorkspace,
+		map[string]interface{}{
+			"workspace":       devWorkspaceName,
+			"command":         "cat /projects/supervisor-terminal/morning-report.md",
+			"timeout_seconds": 5,
+		},
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to read supervisor report in the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	var execResult mcp.ExecResult
+	if err := json.Unmarshal([]byte(output), &execResult); err != nil {
+		return "", fmt.Errorf("failed to unmarshal supervisor report from the DevWorkspace %s: %w", devWorkspaceName, err)
+	}
+
+	return execResult.Output, nil
 }
 
 func (dw *DevWorkspace) RunClaudeTask(ctx context.Context, devWorkspaceName string, task string) error {

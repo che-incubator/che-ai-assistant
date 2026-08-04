@@ -38,6 +38,42 @@ type TaskProcessor struct {
 
 const (
 	devWorkspaceNamePrefix = "che-ai"
+
+	createClaudeSupervisorTaskConfigCommand = `mkdir -p ~/.claude
+cat > ~/.claude/settings.json << 'EOF'
+{
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true
+}
+EOF
+
+cat > ~/.claude.json << 'EOF'
+{
+  "hasCompletedOnboarding": true,
+  "projects": {
+    "/projects/supervisor-terminal": {
+      "hasTrustDialogAccepted": true
+    }
+  }
+}
+EOF
+
+cat > /projects/supervisor-terminal/.claude/settings.local.json << 'EOF'
+{
+  "enabledMcpjsonServers": [
+    "che-mcp-server",
+    "chemuxer-mcp"
+  ]
+}
+EOF
+
+cat > ~/.noidle <<EOF
+enabled: true
+watchedCommands:
+  - claude
+checkPeriodSeconds: 60
+EOF
+`
 )
 
 var (
@@ -76,9 +112,58 @@ func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
 		p.processHelp(ctx, trigger)
+	case commands.SubCommandImplement:
+		p.processImplement(ctx, trigger)
 	default:
 		p.processDefault(ctx, trigger)
 	}
+}
+
+func (p *TaskProcessor) processImplement(
+	ctx context.Context,
+	trigger *github.Trigger,
+) {
+	devWorkspaceName := getDevWorkspaceName(trigger)
+
+	defer func() {
+		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
+		if err != nil {
+			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+		}
+	}()
+
+	err := p.devWorkspace.StartFromRepository(
+		ctx,
+		devWorkspaceName,
+		"https://github.com/akurinnoy/supervisor-terminal",
+		"main",
+		createClaudeSupervisorTaskConfigCommand,
+	)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	runSupervisorCommand := fmt.Sprintf("cd /projects/supervisor-terminal; mkdir artifacts && ./start.sh --url %s --auto-approve --effort-override high", trigger.IssueURL)
+	err = p.devWorkspace.Exec(ctx, devWorkspaceName, runSupervisorCommand, 0)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	err = p.devWorkspace.WaitSupervisorFinished(ctx, devWorkspaceName)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	p.finalizeTask(devWorkspaceName, nil, trigger, p.devWorkspace.ReadSupervisorReport)
 }
 
 func (p *TaskProcessor) processDefault(
@@ -115,7 +200,11 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	copyClaudeConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s", skillsRepositoryName, skillsRepositoryName)
+	copyClaudeConfigCommand := fmt.Sprintf(
+		"cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s",
+		skillsRepositoryName,
+		skillsRepositoryName,
+	)
 
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
