@@ -21,31 +21,35 @@ import (
 )
 
 const (
-	defaultPollInterval          = "10m"
-	defaultTaskTimeout           = "30m"
-	defaultMaxConcurrentTasks    = 1
-	defaultPromptsDir            = "./prompts"
-	defaultWarnDirs              = ".claude,.vscode"
-	defaultLogFile               = "./che-ai-assistant.log"
-	defaultSkillRepositoryURL    = "https://github.com/che-incubator/che-ai-assistant-skills"
-	defaultSkillRepositoryBranch = "main"
-	defaultMCPServerURL          = "http://che-mcp-server:8080/mcp"
+	defaultPollInterval               = "10m"
+	defaultTaskTimeout                = "30m"
+	defaultMaxConcurrentTasks         = 1
+	defaultPromptsDir                 = "./prompts"
+	defaultWarnDirs                   = ".claude,.vscode"
+	defaultLogFile                    = "./che-ai-assistant.log"
+	defaultSkillRepositoryURL         = "https://github.com/che-incubator/che-ai-assistant-skills"
+	defaultSkillRepositoryBranch      = "main"
+	defaultMCPServerURL               = "http://che-mcp-server:8080/mcp"
+	defaultSupervisorRepositoryUrl    = "https://github.com/akurinnoy/supervisor-terminal"
+	defaultSupervisorRepositoryBranch = "main"
 )
 
 type Config struct {
-	GitHubRepositories     []string
-	GitHubUsers            []string
-	GitHubToken            string
-	GitHubPollInterval     time.Duration
-	TaskTimeout            time.Duration
-	MaxConcurrentTasks     int
-	PromptsDir             string
-	LogFile                string
-	MCPServerURL           string
-	WarnDirsCommits        []string
-	StateFile              string
-	SkillsRepositoryURL    string
-	SkillsRepositoryBranch string
+	GitHubRepositories         []string
+	GitHubUsers                []string
+	GitHubToken                string
+	GitHubPollInterval         time.Duration
+	TaskTimeout                time.Duration
+	MaxConcurrentTasks         int
+	PromptsDir                 string
+	LogFile                    string
+	MCPServerURL               string
+	WarnDirsCommits            []string
+	StateFile                  string
+	SkillsRepositoryURL        string
+	SkillsRepositoryBranch     string
+	SupervisorRepositoryUrl    string
+	SupervisorRepositoryBranch string
 }
 
 func Read() (*Config, error) {
@@ -95,6 +99,9 @@ func Read() (*Config, error) {
 	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryURL)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
+	supervisorRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_URL", defaultSkillRepositoryURL)
+	supervisorRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_BRANCH", defaultSkillRepositoryURL)
+
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
 	stateFile := os.Getenv("CHE_AI_ASSISTANT_STATE_FILE")
@@ -107,19 +114,21 @@ func Read() (*Config, error) {
 	}
 
 	return &Config{
-		GitHubRepositories:     splitCSV(githubRepositoriesStr),
-		GitHubPollInterval:     githubPollInterval,
-		TaskTimeout:            taskTimeout,
-		MaxConcurrentTasks:     maxConcurrentTasks,
-		PromptsDir:             promptsDir,
-		GitHubUsers:            splitCSV(githubUsersStr),
-		LogFile:                logFile,
-		MCPServerURL:           mcpServerURL,
-		GitHubToken:            githubToken,
-		WarnDirsCommits:        warnDirsCommits,
-		StateFile:              stateFile,
-		SkillsRepositoryURL:    skillsRepositoryURL,
-		SkillsRepositoryBranch: skillsRepositoryBranch,
+		GitHubRepositories:         splitCSV(githubRepositoriesStr),
+		GitHubPollInterval:         githubPollInterval,
+		TaskTimeout:                taskTimeout,
+		MaxConcurrentTasks:         maxConcurrentTasks,
+		PromptsDir:                 promptsDir,
+		GitHubUsers:                splitCSV(githubUsersStr),
+		LogFile:                    logFile,
+		MCPServerURL:               mcpServerURL,
+		GitHubToken:                githubToken,
+		WarnDirsCommits:            warnDirsCommits,
+		StateFile:                  stateFile,
+		SkillsRepositoryURL:        skillsRepositoryURL,
+		SkillsRepositoryBranch:     skillsRepositoryBranch,
+		SupervisorRepositoryUrl:    supervisorRepositoryUrl,
+		SupervisorRepositoryBranch: supervisorRepositoryBranch,
 	}, nil
 }
 

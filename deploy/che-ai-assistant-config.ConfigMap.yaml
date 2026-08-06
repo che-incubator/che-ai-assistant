@@ -21,3 +21,5 @@ data:
   CHE_AI_ASSISTANT_WARN_DIRS_COMMITS: '.claude,.vscode'
   CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL: 'https://github.com/che-incubator/che-ai-assistant-skills'
   CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH: '97487bebf7c85d6f55053d9b8dfd6e41d4b0b1d1'
+  CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_URL: 'https://github.com/akurinnoy/supervisor-terminal'
+  CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_BRANCH: 'main'

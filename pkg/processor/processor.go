@@ -28,52 +28,18 @@ import (
 )
 
 type TaskProcessor struct {
-	githubClient           *github.Client
-	devWorkspace           *devworkspace.DevWorkspace
-	prompts                map[commands.SubCommandType]string
-	taskTimeout            time.Duration
-	skillsRepositoryURL    string
-	skillsRepositoryBranch string
+	githubClient               *github.Client
+	devWorkspace               *devworkspace.DevWorkspace
+	prompts                    map[commands.SubCommandType]string
+	taskTimeout                time.Duration
+	skillsRepositoryURL        string
+	skillsRepositoryBranch     string
+	supervisorRepositoryURL    string
+	supervisorRepositoryBranch string
 }
 
 const (
 	devWorkspaceNamePrefix = "che-ai"
-
-	createClaudeSupervisorTaskConfigCommand = `mkdir -p ~/.claude
-cat > ~/.claude/settings.json << 'EOF'
-{
-  "theme": "dark",
-  "skipDangerousModePermissionPrompt": true
-}
-EOF
-
-cat > ~/.claude.json << 'EOF'
-{
-  "hasCompletedOnboarding": true,
-  "projects": {
-    "/projects/supervisor-terminal": {
-      "hasTrustDialogAccepted": true
-    }
-  }
-}
-EOF
-
-cat > /projects/supervisor-terminal/.claude/settings.local.json << 'EOF'
-{
-  "enabledMcpjsonServers": [
-    "che-mcp-server",
-    "chemuxer-mcp"
-  ]
-}
-EOF
-
-cat > ~/.noidle <<EOF
-enabled: true
-watchedCommands:
-  - claude
-checkPeriodSeconds: 60
-EOF
-`
 )
 
 var (
@@ -87,12 +53,14 @@ func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskPro
 	}
 
 	return &TaskProcessor{
-		githubClient:           githubClient,
-		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
-		prompts:                prompts,
-		taskTimeout:            cfg.TaskTimeout,
-		skillsRepositoryURL:    cfg.SkillsRepositoryURL,
-		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
+		githubClient:               githubClient,
+		devWorkspace:               devworkspace.NewDevWorkspace(cfg),
+		prompts:                    prompts,
+		taskTimeout:                cfg.TaskTimeout,
+		skillsRepositoryURL:        cfg.SkillsRepositoryURL,
+		skillsRepositoryBranch:     cfg.SkillsRepositoryBranch,
+		supervisorRepositoryURL:    cfg.SupervisorRepositoryUrl,
+		supervisorRepositoryBranch: cfg.SupervisorRepositoryBranch,
 	}, nil
 }
 
@@ -132,12 +100,18 @@ func (p *TaskProcessor) processImplement(
 		}
 	}()
 
+	_, supervisorRepositoryName := github.ParseRepoSlug(p.supervisorRepositoryURL)
+	if !repositoryNamePattern.MatchString(supervisorRepositoryName) {
+		p.finalizeTask(devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", supervisorRepositoryName), trigger, emptyTaskOutputReader)
+		return
+	}
+
 	err := p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
-		"https://github.com/akurinnoy/supervisor-terminal",
-		"main",
-		createClaudeSupervisorTaskConfigCommand,
+		p.supervisorRepositoryURL,
+		p.supervisorRepositoryBranch,
+		getSupervisorDevWorkspacePostStartCommand(supervisorRepositoryName),
 	)
 	if err != nil {
 		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
@@ -150,8 +124,7 @@ func (p *TaskProcessor) processImplement(
 		return
 	}
 
-	runSupervisorCommand := fmt.Sprintf("cd /projects/supervisor-terminal; mkdir artifacts && ./start.sh --url %s --auto-approve --effort-override high", trigger.IssueURL)
-	err = p.devWorkspace.Exec(ctx, devWorkspaceName, runSupervisorCommand, 0)
+	err = p.devWorkspace.Exec(ctx, devWorkspaceName, getSupervisorStartCommand(supervisorRepositoryName, trigger.IssueURL), 0)
 	if err != nil {
 		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
@@ -200,18 +173,12 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	copyClaudeConfigCommand := fmt.Sprintf(
-		"cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s",
-		skillsRepositoryName,
-		skillsRepositoryName,
-	)
-
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
 		p.skillsRepositoryURL,
 		p.skillsRepositoryBranch,
-		copyClaudeConfigCommand,
+		getDefaultTaskDevWorkspacePostStartCommand(skillsRepositoryName),
 	)
 	if err != nil {
 		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
@@ -418,3 +385,53 @@ func getDevWorkspaceName(trigger *github.Trigger) string {
 }
 
 func emptyTaskOutputReader(_ context.Context, _ string) (string, error) { return "", nil }
+
+func getDefaultTaskDevWorkspacePostStartCommand(repositoryName string) string {
+	return fmt.Sprintf(
+		"cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s",
+		repositoryName,
+		repositoryName,
+	)
+}
+
+func getSupervisorDevWorkspacePostStartCommand(repositoryName string) string {
+	return fmt.Sprintf(`mkdir -p ~/.claude
+cat > ~/.claude/settings.json << 'EOF'
+{
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true
+}
+EOF
+
+cat > ~/.claude.json << 'EOF'
+{
+  "hasCompletedOnboarding": true,
+  "projects": {
+    "/projects/%s": {
+      "hasTrustDialogAccepted": true
+    }
+  }
+}
+EOF
+
+cat > /projects/%s/.claude/settings.local.json << 'EOF'
+{
+  "enabledMcpjsonServers": [
+    "che-mcp-server",
+    "chemuxer-mcp"
+  ]
+}
+EOF
+
+cat > ~/.noidle <<EOF
+enabled: true
+watchedCommands:
+  - claude
+checkPeriodSeconds: 60
+EOF
+`, repositoryName, repositoryName)
+}
+
+func getSupervisorStartCommand(repositoryName string, issueURL string) string {
+	return fmt.Sprintf("cd /projects/%s; mkdir artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
+}

@@ -115,7 +115,12 @@ func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName stri
 }
 
 func (dw *DevWorkspace) Exec(ctx context.Context, devWorkspaceName string, command string, timeout int) error {
-	log.Printf("[INFO] Executing command '%s...' in the DevWorkspace %s", command[0:10], devWorkspaceName)
+	cmd2Log := command
+	if len(cmd2Log) > 15 {
+		cmd2Log = cmd2Log[0:10]
+	}
+
+	log.Printf("[INFO] Executing command '%s...' in the DevWorkspace %s", cmd2Log, devWorkspaceName)
 
 	_, err := dw.mcpClient.CallTool(
 		ctx,
@@ -244,6 +249,10 @@ func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspace
 	maxErrors := 3
 	errorCount := 0
 
+	// Supervision takes at least several hours to complete
+	// Let's not wait more than 12h
+	// It is ok to make 30m delay before first check
+
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Hour)
 	defer cancel()
 
@@ -282,7 +291,7 @@ func (dw *DevWorkspace) checkFileExists(ctx context.Context, devWorkspaceName st
 		mcp.ToolExecInWorkspace,
 		map[string]interface{}{
 			"workspace":       devWorkspaceName,
-			"command":         fmt.Sprintf("test -f %s && echo true || echo false", filePath),
+			"command":         fmt.Sprintf("test -f '%s' && echo true || echo false", filePath),
 			"timeout_seconds": 5,
 		},
 	)
