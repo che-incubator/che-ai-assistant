@@ -23,6 +23,7 @@ import (
 const (
 	defaultPollInterval               = "10m"
 	defaultTaskTimeout                = "30m"
+	defaultImplementTaskTimeout       = "12h"
 	defaultMaxConcurrentTasks         = 1
 	defaultPromptsDir                 = "./prompts"
 	defaultWarnDirs                   = ".claude,.vscode"
@@ -40,6 +41,7 @@ type Config struct {
 	GitHubToken                string
 	GitHubPollInterval         time.Duration
 	TaskTimeout                time.Duration
+	ImplementTaskTimeout       time.Duration
 	MaxConcurrentTasks         int
 	PromptsDir                 string
 	LogFile                    string
@@ -82,6 +84,11 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
+	implementTaskTimeout, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_IMPLEMENT_TASK_TIMEOUT", defaultImplementTaskTimeout))
+	if err != nil {
+		return nil, err
+	}
+
 	maxConcurrentTasks := defaultMaxConcurrentTasks
 	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -99,8 +106,8 @@ func Read() (*Config, error) {
 	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryURL)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
-	supervisorRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_URL", defaultSkillRepositoryURL)
-	supervisorRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_BRANCH", defaultSkillRepositoryURL)
+	supervisorRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_URL", defaultSupervisorRepositoryUrl)
+	supervisorRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_BRANCH", defaultSupervisorRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
@@ -117,6 +124,7 @@ func Read() (*Config, error) {
 		GitHubRepositories:         splitCSV(githubRepositoriesStr),
 		GitHubPollInterval:         githubPollInterval,
 		TaskTimeout:                taskTimeout,
+		ImplementTaskTimeout:       implementTaskTimeout,
 		MaxConcurrentTasks:         maxConcurrentTasks,
 		PromptsDir:                 promptsDir,
 		GitHubUsers:                splitCSV(githubUsersStr),

@@ -11,6 +11,7 @@ metadata:
 data:
   CHE_AI_ASSISTANT_MCP_SERVER_URL: 'http://che-mcp-server:8080/mcp'
   CHE_AI_ASSISTANT_TASK_TIMEOUT: '30m'
+  CHE_AI_ASSISTANT_IMPLEMENT_TASK_TIMEOUT: '12h'
   CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS: '4'
   CHE_AI_ASSISTANT_GITHUB_POLL_INTERVAL: '10m'
   CHE_AI_ASSISTANT_GITHUB_REPOSITORIES: 'che-incubator/che-ai-assistant,che-incubator/che-code,che-incubator/chectl,che-incubator/configbump,che-incubator/kubernetes-image-puller,che-incubator/kubernetes-image-puller-operator,devfile/developer-images,devfile/devworkspace-operator,eclipse-che/che,eclipse-che/che-dashboard,eclipse-che/che-machine-exec,eclipse-che/che-operator,eclipse-che/che-plugin-registry,eclipse-che/che-server'
@@ -21,5 +22,5 @@ data:
   CHE_AI_ASSISTANT_WARN_DIRS_COMMITS: '.claude,.vscode'
   CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL: 'https://github.com/che-incubator/che-ai-assistant-skills'
   CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH: '97487bebf7c85d6f55053d9b8dfd6e41d4b0b1d1'
-  CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_URL: 'https://github.com/akurinnoy/supervisor-terminal'
-  CHE_AI_ASSISTANT_TASKS_SUPERVISOUR_REPOSITORY_BRANCH: 'main'
+  CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_URL: 'https://github.com/akurinnoy/supervisor-terminal'
+  CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_BRANCH: 'main'

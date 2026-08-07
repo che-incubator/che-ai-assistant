@@ -32,6 +32,7 @@ type TaskProcessor struct {
 	devWorkspace               *devworkspace.DevWorkspace
 	prompts                    map[commands.SubCommandType]string
 	taskTimeout                time.Duration
+	implementTaskTimeout       time.Duration
 	skillsRepositoryURL        string
 	skillsRepositoryBranch     string
 	supervisorRepositoryURL    string
@@ -57,6 +58,7 @@ func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskPro
 		devWorkspace:               devworkspace.NewDevWorkspace(cfg),
 		prompts:                    prompts,
 		taskTimeout:                cfg.TaskTimeout,
+		implementTaskTimeout:       cfg.ImplementTaskTimeout,
 		skillsRepositoryURL:        cfg.SkillsRepositoryURL,
 		skillsRepositoryBranch:     cfg.SkillsRepositoryBranch,
 		supervisorRepositoryURL:    cfg.SupervisorRepositoryUrl,
@@ -130,7 +132,7 @@ func (p *TaskProcessor) processImplement(
 		return
 	}
 
-	err = p.devWorkspace.WaitSupervisorFinished(ctx, devWorkspaceName)
+	err = p.devWorkspace.WaitSupervisorFinished(ctx, devWorkspaceName, p.implementTaskTimeout)
 	if err != nil {
 		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
 		return
@@ -395,7 +397,8 @@ func getDefaultTaskDevWorkspacePostStartCommand(repositoryName string) string {
 }
 
 func getSupervisorDevWorkspacePostStartCommand(repositoryName string) string {
-	return fmt.Sprintf(`mkdir -p ~/.claude
+	return fmt.Sprintf(`set -e
+mkdir -p ~/.claude
 cat > ~/.claude/settings.json << 'EOF'
 {
   "theme": "dark",
@@ -433,5 +436,5 @@ EOF
 }
 
 func getSupervisorStartCommand(repositoryName string, issueURL string) string {
-	return fmt.Sprintf("cd /projects/%s; mkdir artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
+	return fmt.Sprintf("cd /projects/%s && mkdir artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
 }
