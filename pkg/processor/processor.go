@@ -367,6 +367,9 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 }
 
 func getDevWorkspaceName(trigger *github.Trigger) string {
+	// The probability of DevWorkspace name collision across different GitHub orgs is too low.
+	// Ignored.
+
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
 		devWorkspaceNamePrefix,
@@ -417,6 +420,7 @@ cat > ~/.claude.json << 'EOF'
 }
 EOF
 
+mkdir -p /projects/%s/.claude/
 cat > /projects/%s/.claude/settings.local.json << 'EOF'
 {
   "enabledMcpjsonServers": [
@@ -432,9 +436,9 @@ watchedCommands:
   - claude
 checkPeriodSeconds: 60
 EOF
-`, repositoryName, repositoryName)
+`, repositoryName, repositoryName, repositoryName)
 }
 
 func getSupervisorStartCommand(repositoryName string, issueURL string) string {
-	return fmt.Sprintf("cd /projects/%s && mkdir artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
+	return fmt.Sprintf("cd /projects/%s && mkdir -p artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
 }

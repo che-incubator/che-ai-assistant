@@ -117,10 +117,10 @@ func (dw *DevWorkspace) EnsureRunning(ctx context.Context, devWorkspaceName stri
 func (dw *DevWorkspace) Exec(ctx context.Context, devWorkspaceName string, command string, timeout int) error {
 	cmd2Log := command
 	if len(cmd2Log) > 15 {
-		cmd2Log = cmd2Log[0:15]
+		cmd2Log = cmd2Log[0:15] + "..."
 	}
 
-	log.Printf("[INFO] Executing command '%s...' in the DevWorkspace %s", cmd2Log, devWorkspaceName)
+	log.Printf("[INFO] Executing command '%s' in the DevWorkspace %s", cmd2Log, devWorkspaceName)
 
 	_, err := dw.mcpClient.CallTool(
 		ctx,
@@ -249,10 +249,6 @@ func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspace
 	maxErrors := 3
 	errorCount := 0
 
-	// Supervision takes at least several hours to complete
-	// Let's not wait more than 12h
-	// It is ok to make 30m delay before first check
-
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -262,28 +258,27 @@ func (dw *DevWorkspace) WaitSupervisorFinished(ctx context.Context, devWorkspace
 	defer ticker.Stop()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timed out waiting for supervisor to finish in the DevWorkspace %s", devWorkspaceName)
-		case <-ticker.C:
-			log.Printf("[INFO] Waiting for supervisor to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
+		log.Printf("[INFO] Waiting for supervisor to finish in the DevWorkspace %s (elapsed: %s)", devWorkspaceName, time.Since(start).Round(time.Second))
 
-			exists, err := dw.checkFileExists(ctx, devWorkspaceName, "/projects/supervisor-terminal/morning-report.md")
-			if err != nil {
-				errorCount++
-				if errorCount >= maxErrors {
-					return errors.Join(fmt.Errorf("failed to check supervisor status in the DevWorkspace %s", devWorkspaceName), err)
-				}
-				continue
+		exists, err := dw.checkFileExists(ctx, devWorkspaceName, "/projects/supervisor-terminal/morning-report.md")
+		if err != nil {
+			errorCount++
+			if errorCount >= maxErrors {
+				return errors.Join(fmt.Errorf("failed to check supervisor status in the DevWorkspace %s", devWorkspaceName), err)
 			}
-
-			// reset error counter
+		} else {
 			errorCount = 0
 
 			if exists {
 				log.Printf("[INFO] Supervisor finished in the DevWorkspace %s, lasted %s", devWorkspaceName, time.Since(start).Round(time.Second))
 				return nil
 			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for supervisor to finish in the DevWorkspace %s", devWorkspaceName)
+		case <-ticker.C:
 		}
 	}
 }

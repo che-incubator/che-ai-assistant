@@ -93,7 +93,7 @@ func BuildPRWelcomeMessage(repoFullName string, pollInterval time.Duration) stri
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
-		if subCommand.IssueOnly {
+		if subCommand.Type != SubCommandHelp && subCommand.IssueOnly {
 			continue
 		}
 		if len(subCommand.AllowedRepos) > 0 && !slices.Contains(subCommand.AllowedRepos, repoFullName) {
@@ -115,7 +115,7 @@ func BuildIssueWelcomeMessage(repoFullName string, pollInterval time.Duration) s
 	b.WriteString("**Available commands**:\n")
 
 	for _, subCommand := range SubCommands {
-		if !subCommand.IssueOnly {
+		if subCommand.Type != SubCommandHelp && !subCommand.IssueOnly {
 			continue
 		}
 		if len(subCommand.AllowedRepos) > 0 && !slices.Contains(subCommand.AllowedRepos, repoFullName) {
