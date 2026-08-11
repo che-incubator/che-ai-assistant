@@ -61,7 +61,7 @@ func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskPro
 		implementTaskTimeout:       cfg.ImplementTaskTimeout,
 		skillsRepositoryURL:        cfg.SkillsRepositoryURL,
 		skillsRepositoryBranch:     cfg.SkillsRepositoryBranch,
-		supervisorRepositoryURL:    cfg.SupervisorRepositoryUrl,
+		supervisorRepositoryURL:    cfg.SupervisorRepositoryURL,
 		supervisorRepositoryBranch: cfg.SupervisorRepositoryBranch,
 	}, nil
 }

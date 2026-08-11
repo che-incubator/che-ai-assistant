@@ -31,7 +31,7 @@ const (
 	defaultSkillRepositoryURL         = "https://github.com/che-incubator/che-ai-assistant-skills"
 	defaultSkillRepositoryBranch      = "main"
 	defaultMCPServerURL               = "http://che-mcp-server:8080/mcp"
-	defaultSupervisorRepositoryUrl    = "https://github.com/akurinnoy/supervisor-terminal"
+	defaultSupervisorRepositoryURL    = "https://github.com/akurinnoy/supervisor-terminal"
 	defaultSupervisorRepositoryBranch = "main"
 )
 
@@ -50,7 +50,7 @@ type Config struct {
 	StateFile                  string
 	SkillsRepositoryURL        string
 	SkillsRepositoryBranch     string
-	SupervisorRepositoryUrl    string
+	SupervisorRepositoryURL    string
 	SupervisorRepositoryBranch string
 }
 
@@ -106,7 +106,7 @@ func Read() (*Config, error) {
 	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryURL)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
-	supervisorRepositoryUrl := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_URL", defaultSupervisorRepositoryUrl)
+	supervisorRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_URL", defaultSupervisorRepositoryURL)
 	supervisorRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_BRANCH", defaultSupervisorRepositoryBranch)
 
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
@@ -135,7 +135,7 @@ func Read() (*Config, error) {
 		StateFile:                  stateFile,
 		SkillsRepositoryURL:        skillsRepositoryURL,
 		SkillsRepositoryBranch:     skillsRepositoryBranch,
-		SupervisorRepositoryUrl:    supervisorRepositoryUrl,
+		SupervisorRepositoryURL:    supervisorRepositoryURL,
 		SupervisorRepositoryBranch: supervisorRepositoryBranch,
 	}, nil
 }
