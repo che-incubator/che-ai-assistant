@@ -21,31 +21,37 @@ import (
 )
 
 const (
-	defaultPollInterval          = "10m"
-	defaultTaskTimeout           = "30m"
-	defaultMaxConcurrentTasks    = 1
-	defaultPromptsDir            = "./prompts"
-	defaultWarnDirs              = ".claude,.vscode"
-	defaultLogFile               = "./che-ai-assistant.log"
-	defaultSkillRepositoryURL    = "https://github.com/che-incubator/che-ai-assistant-skills"
-	defaultSkillRepositoryBranch = "main"
-	defaultMCPServerURL          = "http://che-mcp-server:8080/mcp"
+	defaultPollInterval               = "10m"
+	defaultTaskTimeout                = "30m"
+	defaultImplementTaskTimeout       = "12h"
+	defaultMaxConcurrentTasks         = 1
+	defaultPromptsDir                 = "./prompts"
+	defaultWarnDirs                   = ".claude,.vscode"
+	defaultLogFile                    = "./che-ai-assistant.log"
+	defaultSkillRepositoryURL         = "https://github.com/che-incubator/che-ai-assistant-skills"
+	defaultSkillRepositoryBranch      = "main"
+	defaultMCPServerURL               = "http://che-mcp-server:8080/mcp"
+	defaultSupervisorRepositoryURL    = "https://github.com/akurinnoy/supervisor-terminal"
+	defaultSupervisorRepositoryBranch = "main"
 )
 
 type Config struct {
-	GitHubRepositories     []string
-	GitHubUsers            []string
-	GitHubToken            string
-	GitHubPollInterval     time.Duration
-	TaskTimeout            time.Duration
-	MaxConcurrentTasks     int
-	PromptsDir             string
-	LogFile                string
-	MCPServerURL           string
-	WarnDirsCommits        []string
-	StateFile              string
-	SkillsRepositoryURL    string
-	SkillsRepositoryBranch string
+	GitHubRepositories         []string
+	GitHubUsers                []string
+	GitHubToken                string
+	GitHubPollInterval         time.Duration
+	TaskTimeout                time.Duration
+	ImplementTaskTimeout       time.Duration
+	MaxConcurrentTasks         int
+	PromptsDir                 string
+	LogFile                    string
+	MCPServerURL               string
+	WarnDirsCommits            []string
+	StateFile                  string
+	SkillsRepositoryURL        string
+	SkillsRepositoryBranch     string
+	SupervisorRepositoryURL    string
+	SupervisorRepositoryBranch string
 }
 
 func Read() (*Config, error) {
@@ -78,6 +84,11 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
+	implementTaskTimeout, err := parseDuration(optionalEnv("CHE_AI_ASSISTANT_IMPLEMENT_TASK_TIMEOUT", defaultImplementTaskTimeout))
+	if err != nil {
+		return nil, err
+	}
+
 	maxConcurrentTasks := defaultMaxConcurrentTasks
 	if v := os.Getenv("CHE_AI_ASSISTANT_MAX_CONCURRENT_TASKS"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -95,6 +106,9 @@ func Read() (*Config, error) {
 	skillsRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_URL", defaultSkillRepositoryURL)
 	skillsRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SKILLS_REPOSITORY_BRANCH", defaultSkillRepositoryBranch)
 
+	supervisorRepositoryURL := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_URL", defaultSupervisorRepositoryURL)
+	supervisorRepositoryBranch := optionalEnv("CHE_AI_ASSISTANT_TASKS_SUPERVISOR_REPOSITORY_BRANCH", defaultSupervisorRepositoryBranch)
+
 	warnDirsCommits := splitCSV(optionalEnv("CHE_AI_ASSISTANT_WARN_DIRS_COMMITS", defaultWarnDirs))
 
 	stateFile := os.Getenv("CHE_AI_ASSISTANT_STATE_FILE")
@@ -107,19 +121,22 @@ func Read() (*Config, error) {
 	}
 
 	return &Config{
-		GitHubRepositories:     splitCSV(githubRepositoriesStr),
-		GitHubPollInterval:     githubPollInterval,
-		TaskTimeout:            taskTimeout,
-		MaxConcurrentTasks:     maxConcurrentTasks,
-		PromptsDir:             promptsDir,
-		GitHubUsers:            splitCSV(githubUsersStr),
-		LogFile:                logFile,
-		MCPServerURL:           mcpServerURL,
-		GitHubToken:            githubToken,
-		WarnDirsCommits:        warnDirsCommits,
-		StateFile:              stateFile,
-		SkillsRepositoryURL:    skillsRepositoryURL,
-		SkillsRepositoryBranch: skillsRepositoryBranch,
+		GitHubRepositories:         splitCSV(githubRepositoriesStr),
+		GitHubPollInterval:         githubPollInterval,
+		TaskTimeout:                taskTimeout,
+		ImplementTaskTimeout:       implementTaskTimeout,
+		MaxConcurrentTasks:         maxConcurrentTasks,
+		PromptsDir:                 promptsDir,
+		GitHubUsers:                splitCSV(githubUsersStr),
+		LogFile:                    logFile,
+		MCPServerURL:               mcpServerURL,
+		GitHubToken:                githubToken,
+		WarnDirsCommits:            warnDirsCommits,
+		StateFile:                  stateFile,
+		SkillsRepositoryURL:        skillsRepositoryURL,
+		SkillsRepositoryBranch:     skillsRepositoryBranch,
+		SupervisorRepositoryURL:    supervisorRepositoryURL,
+		SupervisorRepositoryBranch: supervisorRepositoryBranch,
 	}, nil
 }
 

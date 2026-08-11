@@ -1,4 +1,9 @@
 IMPORTANT: You are running unattended. Do NOT use AskUserQuestion at any point.
 Skip any user confirmation steps and proceed with your best suggestions automatically.
 
-1. Run /ok-pr-review:ci on this PR: {{.PullRequestURL}}
+1. Run the following skills in order on this PR: {{.PullRequestURL}}
+- /ok-pr-review:summary
+- /ok-pr-review:review
+- /ok-pr-review:deep-review
+- /ok-pr-review:impact
+- /ok-pr-review:comment

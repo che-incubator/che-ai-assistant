@@ -98,6 +98,25 @@ func TestIsCommandAvailableForRepo(t *testing.T) {
 	}
 }
 
+func TestBuildWelcomeMessage_HidesIssueOnlyCommands(t *testing.T) {
+	msg := BuildPRWelcomeMessage("some-org/some-repo", 5*time.Minute)
+
+	assert.NotContains(t, msg, string(SubCommandImplement))
+}
+
+func TestIsIssueOnlyCommand(t *testing.T) {
+	assert.True(t, IsIssueOnlyCommand(SubCommandImplement))
+	assert.False(t, IsIssueOnlyCommand(SubCommandGenerateCheDoc))
+	assert.False(t, IsIssueOnlyCommand(SubCommandHelp))
+	assert.False(t, IsIssueOnlyCommand("nonexistent"))
+}
+
+func TestParse_ImplementCommand(t *testing.T) {
+	ok, subCommandType, _ := Parse("/che-ai-assistant implement")
+	assert.True(t, ok)
+	assert.Equal(t, SubCommandImplement, subCommandType)
+}
+
 func TestBuildWelcomeMessage_ShowsAllCommandsForUnrestrictedRepo(t *testing.T) {
 	msg := BuildPRWelcomeMessage("devfile/devworkspace-operator", 5*time.Minute)
 

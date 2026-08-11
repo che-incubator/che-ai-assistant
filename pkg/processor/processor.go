@@ -28,12 +28,15 @@ import (
 )
 
 type TaskProcessor struct {
-	githubClient           *github.Client
-	devWorkspace           *devworkspace.DevWorkspace
-	prompts                map[commands.SubCommandType]string
-	taskTimeout            time.Duration
-	skillsRepositoryURL    string
-	skillsRepositoryBranch string
+	githubClient               *github.Client
+	devWorkspace               *devworkspace.DevWorkspace
+	prompts                    map[commands.SubCommandType]string
+	taskTimeout                time.Duration
+	implementTaskTimeout       time.Duration
+	skillsRepositoryURL        string
+	skillsRepositoryBranch     string
+	supervisorRepositoryURL    string
+	supervisorRepositoryBranch string
 }
 
 const (
@@ -51,12 +54,15 @@ func NewTaskProcessor(cfg *config.Config, githubClient *github.Client) (*TaskPro
 	}
 
 	return &TaskProcessor{
-		githubClient:           githubClient,
-		devWorkspace:           devworkspace.NewDevWorkspace(cfg),
-		prompts:                prompts,
-		taskTimeout:            cfg.TaskTimeout,
-		skillsRepositoryURL:    cfg.SkillsRepositoryURL,
-		skillsRepositoryBranch: cfg.SkillsRepositoryBranch,
+		githubClient:               githubClient,
+		devWorkspace:               devworkspace.NewDevWorkspace(cfg),
+		prompts:                    prompts,
+		taskTimeout:                cfg.TaskTimeout,
+		implementTaskTimeout:       cfg.ImplementTaskTimeout,
+		skillsRepositoryURL:        cfg.SkillsRepositoryURL,
+		skillsRepositoryBranch:     cfg.SkillsRepositoryBranch,
+		supervisorRepositoryURL:    cfg.SupervisorRepositoryURL,
+		supervisorRepositoryBranch: cfg.SupervisorRepositoryBranch,
 	}, nil
 }
 
@@ -76,9 +82,63 @@ func (p *TaskProcessor) Trigger(ctx context.Context, trigger *github.Trigger) {
 	switch trigger.SubCommandType {
 	case commands.SubCommandHelp:
 		p.processHelp(ctx, trigger)
+	case commands.SubCommandImplement:
+		p.processImplement(ctx, trigger)
 	default:
 		p.processDefault(ctx, trigger)
 	}
+}
+
+func (p *TaskProcessor) processImplement(
+	ctx context.Context,
+	trigger *github.Trigger,
+) {
+	devWorkspaceName := getDevWorkspaceName(trigger)
+
+	defer func() {
+		err := p.devWorkspace.Delete(context.Background(), devWorkspaceName)
+		if err != nil {
+			log.Printf("[ERROR] Failed to delete the DevWorkspace %s: %v", devWorkspaceName, err)
+		}
+	}()
+
+	_, supervisorRepositoryName := github.ParseRepoSlug(p.supervisorRepositoryURL)
+	if !repositoryNamePattern.MatchString(supervisorRepositoryName) {
+		p.finalizeTask(devWorkspaceName, fmt.Errorf("repository %s name doesn't match pattern", supervisorRepositoryName), trigger, emptyTaskOutputReader)
+		return
+	}
+
+	err := p.devWorkspace.StartFromRepository(
+		ctx,
+		devWorkspaceName,
+		p.supervisorRepositoryURL,
+		p.supervisorRepositoryBranch,
+		getSupervisorDevWorkspacePostStartCommand(supervisorRepositoryName),
+	)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	err = p.devWorkspace.EnsureRunning(ctx, devWorkspaceName, 5*time.Minute)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	err = p.devWorkspace.Exec(ctx, devWorkspaceName, getSupervisorStartCommand(supervisorRepositoryName, trigger.IssueURL), 0)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	err = p.devWorkspace.WaitSupervisorFinished(ctx, devWorkspaceName, p.implementTaskTimeout)
+	if err != nil {
+		p.finalizeTask(devWorkspaceName, err, trigger, p.devWorkspace.ReadWorkspaceAgentOutput)
+		return
+	}
+
+	p.finalizeTask(devWorkspaceName, nil, trigger, p.devWorkspace.ReadSupervisorReport)
 }
 
 func (p *TaskProcessor) processDefault(
@@ -115,14 +175,12 @@ func (p *TaskProcessor) processDefault(
 		return
 	}
 
-	copyClaudeConfigCommand := fmt.Sprintf("cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s", skillsRepositoryName, skillsRepositoryName)
-
 	err = p.devWorkspace.StartFromRepository(
 		ctx,
 		devWorkspaceName,
 		p.skillsRepositoryURL,
 		p.skillsRepositoryBranch,
-		copyClaudeConfigCommand,
+		getDefaultTaskDevWorkspacePostStartCommand(skillsRepositoryName),
 	)
 	if err != nil {
 		p.finalizeTask(devWorkspaceName, err, trigger, emptyTaskOutputReader)
@@ -309,6 +367,9 @@ func loadPrompts(dir string) (map[commands.SubCommandType]string, error) {
 }
 
 func getDevWorkspaceName(trigger *github.Trigger) string {
+	// The probability of DevWorkspace name collision across different GitHub orgs is too low.
+	// Ignored.
+
 	devWorkspaceName := fmt.Sprintf(
 		"%s-%s-%s-%d",
 		devWorkspaceNamePrefix,
@@ -329,3 +390,55 @@ func getDevWorkspaceName(trigger *github.Trigger) string {
 }
 
 func emptyTaskOutputReader(_ context.Context, _ string) (string, error) { return "", nil }
+
+func getDefaultTaskDevWorkspacePostStartCommand(repositoryName string) string {
+	return fmt.Sprintf(
+		"cp -r /home/user/projects/%s/.claude /home/user/ && rm -rf /home/user/projects/%s",
+		repositoryName,
+		repositoryName,
+	)
+}
+
+func getSupervisorDevWorkspacePostStartCommand(repositoryName string) string {
+	return fmt.Sprintf(`set -e
+mkdir -p ~/.claude
+cat > ~/.claude/settings.json << 'EOF'
+{
+  "theme": "dark",
+  "skipDangerousModePermissionPrompt": true
+}
+EOF
+
+cat > ~/.claude.json << 'EOF'
+{
+  "hasCompletedOnboarding": true,
+  "projects": {
+    "/projects/%s": {
+      "hasTrustDialogAccepted": true
+    }
+  }
+}
+EOF
+
+mkdir -p /projects/%s/.claude/
+cat > /projects/%s/.claude/settings.local.json << 'EOF'
+{
+  "enabledMcpjsonServers": [
+    "che-mcp-server",
+    "chemuxer-mcp"
+  ]
+}
+EOF
+
+cat > ~/.noidle <<EOF
+enabled: true
+watchedCommands:
+  - claude
+checkPeriodSeconds: 60
+EOF
+`, repositoryName, repositoryName, repositoryName)
+}
+
+func getSupervisorStartCommand(repositoryName string, issueURL string) string {
+	return fmt.Sprintf("cd /projects/%s && mkdir -p artifacts && ./start.sh --url '%s' --auto-approve --effort-override high", repositoryName, issueURL)
+}
