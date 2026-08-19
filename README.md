@@ -26,9 +26,10 @@ A GitHub bot that monitors pull requests and issues, executing AI-powered tasks 
 
 ### Issue Commands
 
-| Command | Description |
-|---------|-------------|
-| `/che-ai-assistant help` | Show available commands |
+| Command                       | Description                                                                      |
+|-------------------------------|----------------------------------------------------------------------------------|
+| `/che-ai-assistant help`      | Show available commands                                                          |
+| `/che-ai-assistant implement` | Implement a feature or fix a bug, requires `che-ai-assistant` label on the issue |
 
 ## Development
 
@@ -48,7 +49,7 @@ make lint
 make clean
 ```
 
-### Configuration
+## Configuration
 
 All configuration is via environment variables.
 
